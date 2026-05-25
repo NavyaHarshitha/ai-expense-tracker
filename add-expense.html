@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Expense Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Expense | AI Expense Tracker</title>
 </head>
 <body>
     <header>
         <nav>
+           <a href="index.html" class="logo">AI Expense Tracker</a>
+
             <ul>
-                <li><a href="Homepage" >HOME</a></li>
-                <li><a href="add-expense.html"  target="_blank" rel="noopener noreferrer" >Expense tracker</a></li>
-                <li><a href="dashboard.html"  target="_blank" rel="noopener noreferrer" >Dashboard</a></li>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="add-expense.html">Add Expense</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
             </ul>
         </nav>
     </header>
@@ -25,12 +27,17 @@
         <fieldset>
           <legend>Expense Details</legend>
 
+        <div>
           <label for="expense-date">Date</label>
-          <input id="expense-date" name="expenseDate" type="date" required>
+          <input id="expense-date" name="expenseDate" type="date" required />
+        </div>
 
+        <div>
           <label for="description">Description</label>
-          <input id="description" name="description" type="text" required>
+          <input id="description" name="description" type="text" placeholder="Lunch, Uber, groceries" required/>
+        </div>
 
+        <div>
           <label for="category">Category</label>
           <select id="category" name="category" required>
             <option value="">Choose category</option>
@@ -40,17 +47,23 @@
             <option value="bills">Bills</option>
             <option value="other">Other</option>
           </select>
+        </div>
 
+        <div>
           <label for="payment-method">Payment Method</label>
           <select id="payment-method" name="paymentMethod" required>
             <option value="">Choose payment method</option>
             <option value="upi">UPI</option>
             <option value="cash">Cash</option>
             <option value="card">Card</option>
+            <option value="bank-transfer">Bank Transfer</option>
           </select>
+        </div>
 
+        <div>
           <label for="amount">Amount</label>
-          <input id="amount" name="amount" type="number" min="1" step="0.01" required>
+          <input id="amount" name="amount" type="number" min="1" step="0.01" required />
+        </div>
 
           <button type="submit">Save Expense</button>
         </fieldset>
@@ -58,23 +71,25 @@
     </section>
 
     <section>
-      <h2>Add Expense Using AI</h2>
+      <h3>Add Expense Using AI</h3>
       <p>Example: “Paid 250 for lunch today using UPI.”</p>
 
       <form>
+      <div>
         <label for="ai-expense-text">Expense message</label>
         <textarea
           id="ai-expense-text"
           name="aiExpenseText"
           placeholder="Paid 250 for lunch today using UPI"
         ></textarea>
+      </div>
 
         <button type="submit">Parse Expense</button>
       </form>
     </section>
 
     <section>
-      <h2>Voice Expense Entry</h2>
+      <h3>Voice Expense Entry</h3>
       <p>In the final app, users will speak an expense and the app will convert it into text.</p>
 
       <button type="button">Start Voice Input</button>
@@ -82,7 +97,7 @@
   </main>
 
     <footer>
-     <p>©Copyright 2026 by navya. All rights reversed.</p>
+     <p>© 2026 Navya. All rights reserved.</p>
     </footer>
 </body>
 </html>
