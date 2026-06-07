@@ -4,50 +4,51 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Expense Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <header>
-        <nav>
-           <a href="index.html">AI Expense Tracker</a>
+    <header class="site-header">
+        <nav class="navbar container">
+           <a href="index.html" class="logo">AI Expense Tracker</a>
 
-            <ul>
-                <li><a href="index.html">Home</a></li>
+            <ul class="nav-links">
+                <li><a href="index.html" aria-current="page">Home</a></li>
                 <li><a href="add-expense.html">Add Expense</a></li>
                 <li><a href="dashboard.html">Dashboard</a></li>
             </ul>
         </nav>
     </header>
-    <main>
-        <section>
-          <div>
+    <main class="home-page">
+        <section class="main section hero-section">
+          <div class="container text-center">
             <h1>Track expenses smarter with AI</h1>
             <p>
               Record your spending manually, type natural expense messages, or use voice input
               to make expense tracking faster and easier.
             </p>
 
-            <div>
-              <a href="add-expense.html">Add Expense</a>
-              <a href="dashboard.html">View Dashboard</a>
+            <div class="main-actions">
+              <a href="add-expense.html" class="primary-button">Add Expense</a>
+              <a href="dashboard.html" class="secondary-button">View Dashboard</a>
             </div>
           </div>
         </section>
 
-        <section>
-          <div>
+        <section class="section section-gradient section-gradient-start">
+          <div class="container">
             <h2>Features</h2>
-            <div>
-              <article>
+            <div class="feature-grid">
+              <article class="card">
                 <h3>Manual Expense Entry</h3>
                 <p>Add amount, category, date, payment method, and description.</p>
               </article>
 
-              <article>
+              <article class="card">
                 <h3>AI Expense Parsing</h3>
                 <p>Type “paid 250 for lunch using UPI” and let AI extract the details.</p>
               </article>
 
-              <article>
+              <article class="card">
                 <h3>Voice Input</h3>
                 <p>Speak your expenses and convert them into records.</p>
               </article>
@@ -55,21 +56,21 @@
           </div>
         </section>
 
-        <section>
-            <div>
+        <section class="section section-gradient section-gradient-end">
+            <div class="container">
               <h2>How It Works</h2>
-              <div>
-                <article>
+              <div class="feature-grid">
+                <article class="card">
                   <h3>1. Add Expense</h3>
                   <p>Enter your expense manually or using natural language.</p>
                 </article>
 
-                <article>
+                <article class="card">
                   <h3>2. Categorize</h3>
                   <p>The app organizes your spending by food, transport, bills, and more.</p>
                 </article>
 
-                <article>
+                <article class="card">
                   <h3>3. Analyze</h3>
                   <p>View summaries and insights to understand where your money goes.</p>
                 </article>
@@ -79,7 +80,7 @@
 
          </section>
     </main>
-    <footer>
+    <footer class="site-footer">
      <p>© 2026 Navya. All rights reserved.</p>
     </footer>
 </body>

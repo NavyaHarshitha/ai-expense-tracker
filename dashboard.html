@@ -4,44 +4,45 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard | AI Expense Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <header>
-        <nav>
+    <header class="site-header">
+        <nav class="navbar container">
            <a href="index.html" class="logo">AI Expense Tracker</a>
 
-            <ul>
+            <ul class="nav-links">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="add-expense.html">Add Expense</a></li>
-                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="dashboard.html" aria-current="page">Dashboard</a></li>
             </ul>
         </nav>
     </header>
-  <main>
-    <h1>Expense Dashboard</h1>
+  <main class="container page-content dashboard-page">
+    <h1 class="page-title">Expense Dashboard</h1>
 
-    <section>
+    <section class="section-block">
       <h2>Monthly Summary</h2>
 
-    <div>
-      <article>
+    <div class="summary-grid">
+      <article class="summary-card">
         <span>Total Spent</span>
         <strong>₹4,500</strong>
       </article>
 
-      <article>
+      <article class="summary-card">
         <span>Total Saved</span>
         <strong>₹1,200</strong>
       </article>
 
-      <article>
+      <article class="summary-card">
         <span>Top Category</span>
         <strong>Food</strong>
       </article>
     </div>
     </section>
 
-    <section>
+    <section class="content-card table-card">
     <table>
     <caption>Recent Expenses</caption>
 
@@ -90,13 +91,13 @@
     </table>
     </section>
 
-    <aside>
+    <aside class="ai-insight">
       <h2>AI Savings Insight</h2>
       <p>You spent more on food this week. Try setting a weekly food budget.</p>
     </aside>
   </main>
 
-    <footer>
+    <footer class="site-footer">
      <p>© 2026 Navya. All rights reserved.</p>
     </footer>
 </body>
