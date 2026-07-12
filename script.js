@@ -14,6 +14,11 @@ const amountInput = document.getElementById("amount");
 const expenseList = document.getElementById("expense-list");
 const totalExpense = document.getElementById("total-expense");
 
+const dateError = document.getElementById("date-error");
+const descriptionError = document.getElementById("description-error");
+const categoryError = document.getElementById("category-error");
+const paymentMethodError = document.getElementById("payment-method-error");
+const amountError = document.getElementById("amount-error");
 
 function saveExpenses() {
   localStorage.setItem(
@@ -24,6 +29,102 @@ function saveExpenses() {
 
 function calculateTotal(){
     return expenses.reduce((sum, expense)=> sum + expense.amount,0);
+  }
+
+function showError(inputElement, errorElement, message) {
+  inputElement.classList.add("input-error");
+  errorElement.textContent = message;
+}
+
+function clearError(inputElement, errorElement) {
+  inputElement.classList.remove("input-error");
+  errorElement.textContent = "";
+}
+
+function clearErrors() {
+  clearError(expenseDateInput, dateError);
+  clearError(descriptionInput, descriptionError);
+  clearError(categoryInput, categoryError);
+  clearError(paymentMethodInput, paymentMethodError);
+  clearError(amountInput, amountError);
+}
+
+function validateExpense() {
+  clearErrors();
+
+  if (expenseDateInput.value === "") {
+    showError(
+      expenseDateInput,
+      dateError,
+      "Date is required."
+    );
+
+    return false;
+  }
+
+  if (descriptionInput.value.trim() === "") {
+    showError(
+      descriptionInput,
+      descriptionError,
+      "Description is required."
+    );
+
+    return false;
+  }
+
+  if (categoryInput.value === "") {
+    showError(
+      categoryInput,
+      categoryError,
+      "Category is required."
+    );
+
+    return false;
+  }
+
+  if (paymentMethodInput.value === "") {
+    showError(
+      paymentMethodInput,
+      paymentMethodError,
+      "Payment method is required."
+    );
+
+    return false;
+  }
+
+  if (amountInput.value === "") {
+    showError(
+      amountInput,
+      amountError,
+      "Amount is required."
+    );
+
+    return false;
+  }
+
+  const amount = Number(amountInput.value);
+
+  if (Number.isNaN(amount)) {
+    showError(
+      amountInput,
+      amountError,
+      "Amount must be a valid number."
+    );
+
+    return false;
+  }
+
+  if (amount <= 0) {
+    showError(
+      amountInput,
+      amountError,
+      "Amount must be greater than 0."
+    );
+
+    return false;
+  }
+
+  return true;
 }
 
 function createExpenseDeleteButton(index) {
@@ -71,6 +172,8 @@ function createExpenseEditButton(expense, index) {
     amountInput.value = expense.amount;
 
     editingIndex = index; // using this index we can access existing entry for edit
+
+    clearErrors();
   });
 
   return editButton;
@@ -98,6 +201,9 @@ function renderExpenses() {
 
 manualExpenseForm.addEventListener("submit", function (event) {
   event.preventDefault(); // to make website to not refresh
+    if (!validateExpense()) {
+      return;
+    }
 
   const expense = {
     date: expenseDateInput.value,
@@ -118,7 +224,7 @@ manualExpenseForm.addEventListener("submit", function (event) {
   renderExpenses();
   manualExpenseForm.reset();
 
-  console.log(expenses);
+  clearErrors();
 });
 
 renderExpenses(); 

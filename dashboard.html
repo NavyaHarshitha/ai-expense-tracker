@@ -27,17 +27,22 @@
     <div class="summary-grid">
       <article class="summary-card">
         <span>Total Spent</span>
-        <strong>₹4,500</strong>
+        <strong id="dashboard-total">₹0</strong>
       </article>
 
       <article class="summary-card">
-        <span>Total Saved</span>
-        <strong>₹1,200</strong>
+        <span>Total Expenses</span>
+        <strong id="dashboard-count">0</strong>
+      </article>
+
+      <article class="summary-card">
+        <span>Highest Expense</span>
+        <strong id="dashboard-highest">₹0</strong>
       </article>
 
       <article class="summary-card">
         <span>Top Category</span>
-        <strong>Food</strong>
+        <strong id="dashboard-top-category">None</strong>
       </article>
     </div>
     </section>
@@ -56,37 +61,13 @@
         </tr>
     </thead>
 
-    <tbody>
-        <tr>
-        <td>2026-05-13</td>
-        <td>Lunch</td>
-        <td>Food</td>
-        <td>UPI</td>
-        <td>₹250</td>
-        </tr>
-
-        <tr>
-        <td>2026-05-13</td>
-        <td>Auto ride</td>
-        <td>Transport</td>
-        <td>Cash</td>
-        <td>₹80</td>
-        </tr>
-
-        <tr>
-        <td>2026-05-13</td>
-        <td>Notebook</td>
-        <td>Education</td>
-        <td>UPI</td>
-        <td>₹120</td>
-        </tr>
+    <tbody id="dashboard-expense-list">
     </tbody>
-
     <tfoot>
-        <tr>
+      <tr>
         <th scope="row" colspan="4">Total</th>
-        <td>₹450</td>
-        </tr>
+        <td id="dashboard-table-total">₹0</td>
+      </tr>
     </tfoot>
     </table>
     </section>
@@ -100,5 +81,6 @@
     <footer class="site-footer">
      <p>© 2026 Navya. All rights reserved.</p>
     </footer>
+<script src="dashboard.js"></script>
 </body>
 </html>
