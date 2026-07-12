@@ -24,7 +24,7 @@
     <section class="content-card">
       <h2>Manual Expense Entry</h2>
 
-      <form class="expense-form">
+      <form id="manual-expense-form" class="expense-form">
         <fieldset>
           <legend>Expense Details</legend>
 
@@ -70,7 +70,15 @@
         </fieldset>
       </form>
     </section>
-
+      <section class="content-card">
+      <h2>Saved Expenses</h2>
+      <ul id="expense-list"></ul>
+      <p>Total:
+      <span id="total-expense"> 0
+      </span>
+      </p>
+      
+    </section>
     <section class="content-card">
       <h2>Add Expense Using AI</h2>
       <p>Example: “Paid 250 for lunch today using UPI.”</p>
@@ -100,5 +108,6 @@
     <footer class="site-footer">
      <p>© 2026 Navya. All rights reserved.</p>
     </footer>
+<script src="script.js"></script>
 </body>
 </html>
