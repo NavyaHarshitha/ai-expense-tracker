@@ -1,0 +1,24 @@
+# dependencies — anywhere in the tree, not just server/
+node_modules/
+.npm-cache/
+
+# build output
+dist/
+
+# local env / secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# the old SQLite practice database
+server/data.db
+*.db-shm
+*.db-wal
+
+# firebase tooling
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Claude Code personal overrides (not team settings)
+.claude/settings.local.json

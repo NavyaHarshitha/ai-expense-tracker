@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+/*
+The original design tokens from styles.css, registered as Tailwind theme values.
+
+This is why the app can use Tailwind utilities and still look like the design
+that was already there: `bg-primary` is #db2777, `bg-canvas` is the slate-50
+page background, `shadow-card` is the same soft shadow. One palette, expressed
+as utilities instead of hand-written classes.
+*/
+@theme {
+  --color-primary: #db2777;
+  --color-primary-dark: #be185d;
+  --color-primary-soft: #fdf2f8;
+  --color-primary-edge: #f9a8d4;
+
+  --color-lavender: #f5f3ff;
+  --color-lavender-soft: #faf5ff;
+
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-ink: #111827;
+  --color-ink-soft: #374151;
+  --color-muted: #6b7280;
+  --color-line: #e5e7eb;
+  --color-line-strong: #d1d5db;
+
+  --color-danger: #dc2626;
+  --color-good: #047857;
+
+  --font-sans: Arial, Helvetica, sans-serif;
+
+  --radius-card: 14px;
+  --radius-field: 10px;
+
+  --shadow-card: 0 12px 28px rgba(17, 24, 39, 0.08);
+  --shadow-button: 0 10px 20px rgba(219, 39, 119, 0.22);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+/* Numbers line up in columns throughout - tables, track balances, the hero figure. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus ring matching the original --focus-ring token. */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(219, 39, 119, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
