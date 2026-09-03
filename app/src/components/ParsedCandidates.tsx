@@ -133,6 +133,15 @@ function ConfirmCard({
 
   const lowConfidence = item.candidate.confidence < CONFIDENCE_FLOOR
 
+  /*
+  A negative amount here would conjure spendable money: leftToday becomes
+  allowance - (-5000), and the month's remainder grows. min="0" on the input is
+  not enforced outside form validation, and this card has no form, so the guard
+  has to be explicit.
+  */
+  const amountRupees = Number(amount)
+  const amountValid = Number.isFinite(amountRupees) && amountRupees > 0
+
   return (
     <div className="rounded-card border border-line border-l-4 border-l-primary bg-surface p-4 shadow-card">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -196,14 +205,15 @@ function ConfirmCard({
         <button
           type="button"
           className={primaryButton}
-          disabled={busy}
+          disabled={busy || !amountValid}
           onClick={async () => {
+            if (!amountValid) return
             setBusy(true)
             await onSave(
               item.key,
               {
                 ...item.candidate,
-                amount_rupees: Number(amount) || 0,
+                amount_rupees: amountRupees,
                 description,
                 category,
                 payment_method: method,
@@ -232,6 +242,13 @@ function ConfirmCard({
           Discard
         </button>
       </div>
+
+      {!amountValid && (
+        <p className="m-0 mt-2 text-sm font-bold text-danger">
+          Enter an amount greater than zero. To record money coming back, save it and change
+          the type to Refund.
+        </p>
+      )}
     </div>
   )
 }

@@ -18,9 +18,18 @@ export function SafeToSpendCard({
   const overspent = result.safeToSpendMinor < 0
   const dayExhausted =
     result.todayAllowanceMinor > 0 && result.spentTodayMinor > result.todayAllowanceMinor
+  /*
+  Clamped at BOTH ends. spentTodayMinor goes negative on a net-refund day, which
+  produced width: '-25%' - an invalid CSS length that the CSSOM drops entirely,
+  leaving the block-level bar to fill its whole track. The bar then read "day
+  fully spent" directly under a hero saying money was left.
+  */
   const dayUsedPct =
     result.todayAllowanceMinor > 0
-      ? Math.min(100, Math.round((result.spentTodayMinor / result.todayAllowanceMinor) * 100))
+      ? Math.max(
+          0,
+          Math.min(100, Math.round((result.spentTodayMinor / result.todayAllowanceMinor) * 100)),
+        )
       : 0
 
   /*
@@ -72,7 +81,13 @@ export function SafeToSpendCard({
         <div className="mt-4">
           <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="text-muted">
-              {result.spentTodayMinor > 0 ? (
+              {result.spentTodayMinor < 0 ? (
+                <>
+                  Refunds today put{' '}
+                  <strong className="tnum text-good">{formatINR(-result.spentTodayMinor)}</strong>{' '}
+                  back
+                </>
+              ) : result.spentTodayMinor > 0 ? (
                 <>
                   <strong className="tnum text-ink">{formatINR(result.spentTodayMinor)}</strong> of{' '}
                   <span className="tnum">{formatINR(result.todayAllowanceMinor)}</span> spent today

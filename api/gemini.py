@@ -349,6 +349,8 @@ def plan_actions(
     mime_type: str | None,
     existing_tracks: list[dict],
     categories: list[str],
+    today: str | None = None,
+    timezone: str | None = None,
 ) -> tuple[list[dict], str]:
     """
     Turn an instruction into a list of intended function calls.
@@ -382,8 +384,13 @@ def plan_actions(
         config=types.GenerateContentConfig(
             system_instruction=(
                 f"{PLAN_SYSTEM}\n\n"
-                f"Today is {date.today().isoformat()}.\n\n"
-                f"Existing tracks:\n{track_summary}\n\n"
+                # The CLIENT's date, not the server's. Cloud Run runs UTC, so
+                # date.today() here reads as yesterday for the whole 00:00-05:29
+                # IST window - which would mis-resolve "today" and "yesterday",
+                # and at a month boundary file the expense under the wrong month.
+                f"Today is {today or date.today().isoformat()}"
+                + (f" in the user's timezone ({timezone})." if timezone else ".")
+                + f"\n\nExisting tracks:\n{track_summary}\n\n"
                 f"Valid expense categories: {', '.join(categories)}"
             ),
             tools=TOOLS,

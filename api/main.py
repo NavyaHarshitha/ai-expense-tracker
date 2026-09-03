@@ -79,6 +79,9 @@ class PlanRequest(BaseModel):
     """Name and type only - the planner never needs amounts or the ledger itself."""
     existing_tracks: list[dict] = Field(default_factory=list)
     categories: list[str] = Field(default_factory=lambda: list(DEFAULT_CATEGORIES))
+    """The client's own local date (YYYY-MM-DD) and IANA zone. See gemini.py."""
+    today: str | None = None
+    timezone: str | None = None
 
 
 class PlannedAction(BaseModel):
@@ -187,6 +190,8 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
             mime_type=req.mime_type,
             existing_tracks=req.existing_tracks,
             categories=req.categories or DEFAULT_CATEGORIES,
+            today=req.today,
+            timezone=req.timezone,
         )
     except Exception as exc:
         log.exception("Plan failed for uid=%s", uid)

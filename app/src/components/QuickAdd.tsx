@@ -39,6 +39,7 @@ Defaults make the common case three fields: amount, what it was, which track.
 export function QuickAdd({
   uid,
   tracks,
+  today,
   editing,
   onAdd,
   onUpdate,
@@ -47,6 +48,7 @@ export function QuickAdd({
 }: {
   uid: string
   tracks: Track[]
+  today: Date
   editing?: Transaction | null
   onAdd: (txn: Omit<Transaction, 'id'>) => Promise<string>
   onUpdate: (id: string, patch: Partial<Transaction>) => Promise<void>
@@ -109,7 +111,13 @@ export function QuickAdd({
     setBusy(true)
 
     const fields = {
-      occurredOn,
+      /*
+      Never write a blank date. Clearing the date field yields '', which fails
+      both isInMonth and isSameDay - so the expense vanished from Safe-to-Spend,
+      the summary, the charts and the daily series, while still appearing in the
+      transactions table. A permanent, invisible overstatement.
+      */
+      occurredOn: occurredOn || todayIso(),
       amountMinor,
       movement,
       trackId: effectiveTrackId,
@@ -185,7 +193,7 @@ export function QuickAdd({
         categories: CATEGORIES,
       })
 
-      const actions = normaliseAll(result.actions, tracks)
+      const actions = normaliseAll(result.actions, tracks, today)
 
       if (actions.length === 0) {
         setParseError(
@@ -259,7 +267,7 @@ export function QuickAdd({
         setPending((prev) => [...items, ...prev])
       }
     },
-    [commit, tracks, uid],
+    [commit, tracks, today, uid],
   )
 
   const voice = useVoiceCapture(handleCaptured)
@@ -444,6 +452,7 @@ export function QuickAdd({
               type="date"
               value={occurredOn}
               onChange={(e) => setOccurredOn(e.target.value)}
+              required
             />
           </div>
 

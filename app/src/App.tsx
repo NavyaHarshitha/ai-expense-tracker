@@ -5,6 +5,7 @@ import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
 import { useTracks } from './hooks/useTracks'
+import { useToday } from './hooks/useToday'
 import { useTransactions } from './hooks/useTransactions'
 import { computeSafeToSpend, type SafeToSpendResult } from './lib/safeToSpend'
 import { linkButton } from './lib/ui'
@@ -44,12 +45,17 @@ export default function App() {
   const { transactions, createTransaction, updateTransaction, softDelete } = useTransactions(uid)
   const { monthlyIncomeMinor, setIncome } = useProfile(uid)
 
-  const today = new Date()
+  /*
+  A live value, not a snapshot taken at first render. `today` is now a memo
+  dependency, so the figures recompute when the calendar day rolls over even if
+  no Firestore change arrives.
+  */
+  const today = useToday()
 
-  // Recomputed whenever Firestore pushes a change - no refresh, no refetch.
+  // Recomputed whenever Firestore pushes a change, or the day turns over.
   const result = useMemo(
-    () => computeSafeToSpend({ monthlyIncomeMinor, tracks, transactions, today: new Date() }),
-    [monthlyIncomeMinor, tracks, transactions],
+    () => computeSafeToSpend({ monthlyIncomeMinor, tracks, transactions, today }),
+    [monthlyIncomeMinor, tracks, transactions, today],
   )
 
   if (authLoading) {

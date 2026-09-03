@@ -75,8 +75,27 @@ function day(value: unknown): number | undefined {
   return n
 }
 
-function isIsoDate(value: unknown): boolean {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+/**
+ * A real ISO date within a sane window of the client's today.
+ *
+ * Backdating is legitimate ("spent 500 last Monday"), so the window is generous
+ * rather than a-day-either-side. But a date the model got badly wrong - a
+ * mis-resolved "yesterday", or a year typo - must not silently land somewhere
+ * that no month's figures include.
+ */
+function validDate(value: unknown, today: Date): boolean {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+
+  const [y, m, d] = value.split('-').map(Number)
+  const parsed = new Date(y, m - 1, d)
+
+  // Rejects 2026-02-31 and friends, which Date happily rolls over.
+  if (parsed.getFullYear() !== y || parsed.getMonth() !== m - 1 || parsed.getDate() !== d) {
+    return false
+  }
+
+  const days = (parsed.getTime() - today.getTime()) / 86_400_000
+  return days <= 1 && days >= -120
 }
 
 /**
@@ -85,7 +104,11 @@ function isIsoDate(value: unknown): boolean {
  * `existing` is needed so update_track can be resolved to a real id - the model
  * only knows track names.
  */
-export function normalise(raw: RawAction, existing: Track[]): NormalisedAction | null {
+export function normalise(
+  raw: RawAction,
+  existing: Track[],
+  today: Date,
+): NormalisedAction | null {
   const a = raw.args ?? {}
 
   switch (raw.tool) {
@@ -145,7 +168,7 @@ export function normalise(raw: RawAction, existing: Track[]): NormalisedAction |
         paymentMethod: METHODS.includes(method) ? method : 'upi',
         movement: MOVEMENTS.includes(movement) ? movement : 'expense',
         trackName: str(a.track_name) || undefined,
-        occurredOn: isIsoDate(a.occurred_on) ? (a.occurred_on as string) : undefined,
+        occurredOn: validDate(a.occurred_on, today) ? (a.occurred_on as string) : undefined,
         note: str(a.note) || undefined,
       }
     }
@@ -155,8 +178,14 @@ export function normalise(raw: RawAction, existing: Track[]): NormalisedAction |
   }
 }
 
-export function normaliseAll(raw: RawAction[], existing: Track[]): NormalisedAction[] {
-  return raw.map((r) => normalise(r, existing)).filter((a): a is NormalisedAction => a !== null)
+export function normaliseAll(
+  raw: RawAction[],
+  existing: Track[],
+  today: Date,
+): NormalisedAction[] {
+  return raw
+    .map((r) => normalise(r, existing, today))
+    .filter((a): a is NormalisedAction => a !== null)
 }
 
 /** True for anything that changes the structure of the budget rather than recording money. */

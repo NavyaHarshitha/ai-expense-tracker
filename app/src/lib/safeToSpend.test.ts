@@ -4,6 +4,7 @@ import {
   computeSafeToSpend,
   daysRemainingInMonth,
   isInMonth,
+  isSameDay,
   spentThisMonthMinor,
 } from './safeToSpend'
 import { toPaise, formatINR } from './money'
@@ -310,5 +311,71 @@ describe("today's allowance and rollover", () => {
     expect(r.safeToSpendMinor).toBeLessThan(0)
     expect(r.todayAllowanceMinor).toBe(0)
     expect(r.leftTodayMinor).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Regressions found by adversarial review (see workflow verify-daily-allowance)
+// ---------------------------------------------------------------------------
+
+describe('refund-day edge cases', () => {
+  const tks: Track[] = [
+    { id: 'daily', name: 'Daily', type: 'spending', archived: false },
+    { id: 'emi', name: 'EMI', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(1000), dueDay: 5 },
+  ]
+  const SEP_3 = new Date(2026, 8, 3)
+
+  const t = (over: Partial<Transaction>): Transaction => ({
+    id: 't', occurredOn: '2026-09-03', amountMinor: toPaise(400),
+    movement: 'expense', trackId: 'daily', categoryName: 'Food',
+    description: 'x', paymentMethod: 'upi', source: 'manual',
+    createdAt: 0, deletedAt: null, ...over,
+  })
+
+  it('lets spentToday go negative on a net-refund day', () => {
+    // The card must clamp the progress bar for this; a negative width is
+    // invalid CSS, gets dropped, and the bar renders 100% full.
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: toPaise(50000), tracks: tks,
+      transactions: [t({ movement: 'refund' })], today: SEP_3,
+    })
+    expect(r.spentTodayMinor).toBe(-toPaise(400))
+    expect(r.leftTodayMinor).toBeGreaterThan(r.todayAllowanceMinor)
+  })
+
+  it('never produces NaN from a zero allowance', () => {
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: 0, tracks: tks, transactions: [], today: SEP_3,
+    })
+    expect(r.todayAllowanceMinor).toBe(0)
+    expect(Number.isNaN(r.leftTodayMinor)).toBe(false)
+    expect(r.leftTodayMinor).toBe(0)
+  })
+})
+
+describe('malformed dates cannot silently vanish money', () => {
+  const tks: Track[] = [{ id: 'daily', name: 'Daily', type: 'spending', archived: false }]
+  const SEP_3 = new Date(2026, 8, 3)
+
+  const t = (occurredOn: string): Transaction => ({
+    id: 'x', occurredOn, amountMinor: toPaise(3000), movement: 'expense',
+    trackId: 'daily', categoryName: 'Food', description: 'x',
+    paymentMethod: 'upi', source: 'manual', createdAt: 0, deletedAt: null,
+  })
+
+  it('excludes a blank date from every aggregate - which is why writing one is blocked', () => {
+    // Documents the hazard: '' matches no month and no day, so the row would be
+    // listed in the ledger yet invisible to Safe-to-Spend forever. QuickAdd now
+    // substitutes today rather than ever writing this.
+    expect(isInMonth('', SEP_3)).toBe(false)
+    expect(isSameDay('', SEP_3)).toBe(false)
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: toPaise(50000), tracks: tks, transactions: [t('')], today: SEP_3,
+    })
+    expect(r.spentMinor).toBe(0)
+  })
+
+  it('treats a timestamped date as not-today', () => {
+    expect(isSameDay('2026-09-03T18:30:00Z', SEP_3)).toBe(false)
   })
 })

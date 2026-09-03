@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { collection, doc, setDoc, writeBatch } from 'firebase/firestore'
+import { collection, doc, writeBatch } from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
 import type { NormalisedAction } from '../lib/planActions'
@@ -37,7 +37,8 @@ function todayIso(): string {
 export function usePlanExecutor(
   uid: string,
   tracks: Track[],
-  createTransaction: (uid: string, txn: Omit<Transaction, 'id'>) => Promise<string>,
+  /** Already bound to the signed-in user by the caller - takes the txn alone. */
+  createTransaction: (txn: Omit<Transaction, 'id'>) => Promise<string>,
 ) {
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -179,7 +180,7 @@ export function usePlanExecutor(
             continue
           }
 
-          const id = await createTransaction(uid, {
+          const id = await createTransaction({
             occurredOn: action.occurredOn ?? todayIso(),
             amountMinor: action.amountMinor,
             movement: action.movement,

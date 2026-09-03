@@ -55,6 +55,7 @@ export function AddExpense() {
         <QuickAdd
           uid={uid}
           tracks={tracks}
+          today={today}
           editing={editing}
           onAdd={(txn) => createTransaction(uid, txn)}
           onUpdate={(id, patch) => updateTransaction(uid, id, patch)}

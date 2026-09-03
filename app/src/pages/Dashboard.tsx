@@ -95,7 +95,7 @@ export function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number) => formatINR(v)}
+                  formatter={(value) => formatINR(Number(value))}
                   contentStyle={{
                     borderRadius: 10,
                     border: '1px solid #e5e7eb',
@@ -146,7 +146,7 @@ export function Dashboard() {
                   tickFormatter={(v: number) => (v ? `${Math.round(v / 100000)}k` : '0')}
                 />
                 <Tooltip
-                  formatter={(v: number) => formatINR(v)}
+                  formatter={(value) => formatINR(Number(value))}
                   labelFormatter={(l) => `Day ${l}`}
                   contentStyle={{
                     borderRadius: 10,

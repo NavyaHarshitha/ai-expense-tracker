@@ -7,6 +7,7 @@ per request and we never hold a stale one.
 */
 
 import { auth } from './firebase'
+import { todayKey } from '../hooks/useToday'
 import type { PaymentMethod } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -30,11 +31,11 @@ export interface MonthlyInsight {
 }
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
+  status: number
+
+  constructor(message: string, status: number) {
     super(message)
+    this.status = status
   }
 }
 
@@ -67,23 +68,6 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   }
 
   return response.json() as Promise<T>
-}
-
-export async function parseExpenses(input: {
-  text?: string
-  audioBase64?: string
-  mimeType?: string
-  categories: string[]
-  methods: string[]
-}): Promise<ParsedCandidate[]> {
-  const data = await post<{ candidates: ParsedCandidate[] }>('/parse', {
-    text: input.text,
-    audio_base64: input.audioBase64,
-    mime_type: input.mimeType,
-    categories: input.categories,
-    methods: input.methods,
-  })
-  return data.candidates ?? []
 }
 
 export async function fetchInsight(figures: {
@@ -128,11 +112,22 @@ export async function planActions(input: {
   existingTracks: Array<{ name: string; type: string }>
   categories: string[]
 }): Promise<PlanResult> {
+  /*
+  `today` is the CLIENT's local date, and it matters.
+
+  Cloud Run runs in UTC, so a server-side date.today() reads as yesterday for
+  the whole 00:00-05:29 IST window. Saying "spent 600 on dinner" at 1am would
+  stamp yesterday's date, and "yesterday" would resolve two days back. At a month
+  boundary the expense lands in the wrong month and disappears from the current
+  month's figures entirely.
+  */
   return post<PlanResult>('/plan', {
     text: input.text,
     audio_base64: input.audioBase64,
     mime_type: input.mimeType,
     existing_tracks: input.existingTracks,
     categories: input.categories,
+    today: todayKey(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   })
 }
