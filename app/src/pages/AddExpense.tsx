@@ -53,6 +53,7 @@ export function AddExpense() {
     <div className="grid gap-8">
       <div ref={formRef}>
         <QuickAdd
+          uid={uid}
           tracks={tracks}
           editing={editing}
           onAdd={(txn) => createTransaction(uid, txn)}

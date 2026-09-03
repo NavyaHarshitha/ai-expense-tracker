@@ -197,3 +197,208 @@ def write_insight(figures: dict) -> dict:
     except json.JSONDecodeError:
         log.error("Insight model returned unparseable JSON: %s", raw[:200])
         return {"headline": "", "body": "", "actions": []}
+
+
+# --------------------------------------------------------------------------
+# Action planning (tool calling)
+# --------------------------------------------------------------------------
+
+PLAN_SYSTEM = """\
+You turn spoken instructions about personal finances into function calls.
+
+You do not answer questions or chat - you decide which functions to call, with
+which arguments. Call as many as the instruction requires.
+
+Understanding the model of this app:
+- A "track" is a bucket money comes out of, and has one of four types:
+  * spending   - a monthly allowance that resets. Daily Expenses, Eating Out.
+  * commitment - a known amount on a known day of the month. EMI, rent, a SIP,
+                 a subscription. Reserved up front before anything else.
+  * goal       - accumulates toward a target. Emergency Fund. Holdings such as
+                 mutual funds or shares are goals, with the current value as the
+                 amount already saved.
+  * project    - date-bounded: saves, then spends down, then closes. A trip.
+- Several amounts on several dates means SEVERAL commitment tracks, one per
+  date. "SIPs: 15th 15k, 6th 10k" is two commitments, not one.
+- Name tracks the way the person said it, but make each one distinguishable:
+  "Mutual Fund SIP (15th)" and "Mutual Fund SIP (6th)".
+
+Amount rules:
+- Indian rupees. "60k" is 60000, "sixteen hundred" is 1600, "1.5 lakh" is 150000.
+- Never invent an amount. Omit the argument if none was stated.
+
+If the instruction names an EXISTING track, call update_track rather than
+creating a duplicate. The existing tracks are given to you.
+
+If the instruction is not actionable - a question, or something these functions
+cannot do - call nothing and reply in one short sentence saying so."""
+
+TOOLS = [
+    {
+        "function_declarations": [
+            {
+                "name": "create_track",
+                "description": (
+                    "Create a new track (a bucket money comes out of). Use for SIPs, EMIs, "
+                    "rent, subscriptions, savings goals, holdings and trips."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "name": {"type": "STRING", "description": "Short, distinguishable name"},
+                        "type": {
+                            "type": "STRING",
+                            "enum": ["spending", "commitment", "goal", "project"],
+                        },
+                        "amount_rupees": {
+                            "type": "NUMBER",
+                            "description": (
+                                "Monthly limit for spending; amount due for commitment; "
+                                "target or current holding value for goal; budget for project"
+                            ),
+                        },
+                        "due_day": {
+                            "type": "INTEGER",
+                            "description": "Day of month 1-31. Commitments only.",
+                        },
+                        "per_month_rupees": {
+                            "type": "NUMBER",
+                            "description": "Amount set aside each month. Goals and projects only.",
+                        },
+                        "locked": {
+                            "type": "BOOLEAN",
+                            "description": (
+                                "True if this goal must be excluded from spending advice, "
+                                "e.g. an emergency fund"
+                            ),
+                        },
+                    },
+                    "required": ["name", "type"],
+                },
+            },
+            {
+                "name": "update_track",
+                "description": "Change an existing track. Match on its exact current name.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "track_name": {"type": "STRING"},
+                        "new_name": {"type": "STRING"},
+                        "amount_rupees": {"type": "NUMBER"},
+                        "due_day": {"type": "INTEGER"},
+                        "per_month_rupees": {"type": "NUMBER"},
+                        "locked": {"type": "BOOLEAN"},
+                    },
+                    "required": ["track_name"],
+                },
+            },
+            {
+                "name": "create_expense",
+                "description": "Record money already spent, received, or moved.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "amount_rupees": {"type": "NUMBER"},
+                        "description": {"type": "STRING", "description": "1-4 words"},
+                        "category": {"type": "STRING"},
+                        "payment_method": {
+                            "type": "STRING",
+                            "enum": ["upi", "cash", "card", "bank_transfer"],
+                        },
+                        "movement": {
+                            "type": "STRING",
+                            "enum": ["expense", "income", "transfer", "refund"],
+                        },
+                        "track_name": {
+                            "type": "STRING",
+                            "description": "Which track this comes out of. May be one created in this same instruction.",
+                        },
+                        "occurred_on": {"type": "STRING", "description": "ISO YYYY-MM-DD"},
+                        "note": {"type": "STRING"},
+                    },
+                    "required": ["amount_rupees", "description"],
+                },
+            },
+            {
+                "name": "set_monthly_income",
+                "description": "Set the monthly income that Safe-to-Spend is calculated from.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {"rupees": {"type": "NUMBER"}},
+                    "required": ["rupees"],
+                },
+            },
+        ]
+    }
+]
+
+# A single utterance should never produce more than this. Protects against a
+# misheard instruction fanning out into dozens of writes.
+MAX_ACTIONS = 20
+
+
+def plan_actions(
+    *,
+    text: str | None,
+    audio_base64: str | None,
+    mime_type: str | None,
+    existing_tracks: list[dict],
+    categories: list[str],
+) -> tuple[list[dict], str]:
+    """
+    Turn an instruction into a list of intended function calls.
+
+    Returns (actions, reply). Nothing is executed here - the caller sends these
+    back to the client, which confirms them and applies them through its own
+    write path. The backend deliberately holds no Firestore write credentials.
+    """
+    parts: list[types.Part] = []
+
+    if audio_base64:
+        import base64
+
+        parts.append(
+            types.Part.from_bytes(
+                data=base64.b64decode(audio_base64), mime_type=mime_type or "audio/webm"
+            )
+        )
+        parts.append(types.Part.from_text(text="Do what this recording asks."))
+    else:
+        parts.append(types.Part.from_text(text=text or ""))
+
+    track_summary = (
+        "\n".join(f"- {t.get('name')} ({t.get('type')})" for t in existing_tracks)
+        or "- (none yet)"
+    )
+
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=[types.Content(role="user", parts=parts)],
+        config=types.GenerateContentConfig(
+            system_instruction=(
+                f"{PLAN_SYSTEM}\n\n"
+                f"Today is {date.today().isoformat()}.\n\n"
+                f"Existing tracks:\n{track_summary}\n\n"
+                f"Valid expense categories: {', '.join(categories)}"
+            ),
+            tools=TOOLS,
+            temperature=0,
+        ),
+    )
+
+    actions: list[dict] = []
+    reply_parts: list[str] = []
+
+    candidates = response.candidates or []
+    for part in (candidates[0].content.parts if candidates and candidates[0].content else []):
+        call = getattr(part, "function_call", None)
+        if call and call.name:
+            actions.append({"tool": call.name, "args": dict(call.args or {})})
+        elif getattr(part, "text", None):
+            reply_parts.append(part.text)
+
+    if len(actions) > MAX_ACTIONS:
+        log.warning("Truncating %d actions to %d", len(actions), MAX_ACTIONS)
+        actions = actions[:MAX_ACTIONS]
+
+    return actions, " ".join(reply_parts).strip()

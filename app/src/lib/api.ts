@@ -99,3 +99,40 @@ export async function fetchInsight(figures: {
 }): Promise<MonthlyInsight> {
   return post<MonthlyInsight>('/insights', figures)
 }
+
+// ---------------------------------------------------------------------------
+// Action planning
+// ---------------------------------------------------------------------------
+
+export interface RawPlannedAction {
+  tool: string
+  args: Record<string, unknown>
+}
+
+export interface PlanResult {
+  actions: RawPlannedAction[]
+  reply: string
+  model: string
+}
+
+/**
+ * Turn an instruction into intended actions.
+ *
+ * Only track names and types are sent - the planner never needs amounts or the
+ * ledger, which keeps the prompt small and cheap however large the ledger gets.
+ */
+export async function planActions(input: {
+  text?: string
+  audioBase64?: string
+  mimeType?: string
+  existingTracks: Array<{ name: string; type: string }>
+  categories: string[]
+}): Promise<PlanResult> {
+  return post<PlanResult>('/plan', {
+    text: input.text,
+    audio_base64: input.audioBase64,
+    mime_type: input.mimeType,
+    existing_tracks: input.existingTracks,
+    categories: input.categories,
+  })
+}

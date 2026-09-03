@@ -4,8 +4,11 @@ import type { VoiceState } from '../hooks/useVoiceCapture'
 The primary way into the app.
 
 Press and hold to record, release to send - the same gesture as a voice note,
-which is the interaction people already know. Click-to-toggle is also supported
-for desktop, where holding a mouse button down feels wrong.
+which is the interaction people already know.
+
+It handles both recording an expense and instructing the app ("my rent is 18000
+due on the 5th"), because those are the same gesture to a person and should not
+need two different buttons.
 */
 export function VoiceButton({
   state,
@@ -36,7 +39,7 @@ export function VoiceButton({
       ? 'Reading that back…'
       : requesting
         ? 'Waiting for the microphone…'
-        : 'Hold to speak an expense'
+        : 'Hold and tell it what to do'
 
   return (
     <div className="grid gap-3">

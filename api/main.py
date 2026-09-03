@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from auth import require_user
-from gemini import MODEL, parse_expenses, write_insight
+from gemini import MAX_ACTIONS, MODEL, parse_expenses, plan_actions, write_insight
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -69,6 +69,26 @@ class Candidate(BaseModel):
 
 class ParseResponse(BaseModel):
     candidates: list[Candidate]
+    model: str
+
+
+class PlanRequest(BaseModel):
+    text: str | None = None
+    audio_base64: str | None = None
+    mime_type: str | None = None
+    """Name and type only - the planner never needs amounts or the ledger itself."""
+    existing_tracks: list[dict] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=lambda: list(DEFAULT_CATEGORIES))
+
+
+class PlannedAction(BaseModel):
+    tool: str
+    args: dict
+
+
+class PlanResponse(BaseModel):
+    actions: list[PlannedAction]
+    reply: str
     model: str
 
 
@@ -140,6 +160,47 @@ async def parse(req: ParseRequest, uid: str = Depends(require_user)):
 
     log.info("uid=%s parsed=%d source=%s", uid, len(candidates), "audio" if req.audio_base64 else "text")
     return ParseResponse(candidates=candidates, model=MODEL)
+
+
+ALLOWED_TOOLS = {"create_track", "update_track", "create_expense", "set_monthly_income"}
+
+
+@app.post("/plan", response_model=PlanResponse)
+async def plan(req: PlanRequest, uid: str = Depends(require_user)):
+    """
+    Turn an instruction into a list of intended actions.
+
+    Nothing is executed here. The client confirms the plan and applies it through
+    its own Firestore write path, so the security rules stay the only
+    authorization layer and this service holds no write credentials at all.
+    """
+    if not req.text and not req.audio_base64:
+        raise HTTPException(status_code=400, detail="Provide either text or audio_base64")
+
+    if req.audio_base64 and len(req.audio_base64) > MAX_AUDIO_BASE64:
+        raise HTTPException(status_code=413, detail="Recording too long - keep it under a minute")
+
+    try:
+        actions, reply = plan_actions(
+            text=req.text,
+            audio_base64=req.audio_base64,
+            mime_type=req.mime_type,
+            existing_tracks=req.existing_tracks,
+            categories=req.categories or DEFAULT_CATEGORIES,
+        )
+    except Exception as exc:
+        log.exception("Plan failed for uid=%s", uid)
+        raise HTTPException(status_code=502, detail="Could not reach the model") from exc
+
+    # Drop anything not on the allowlist. The model should never emit an unknown
+    # tool, but a planner whose output is applied to a ledger gets a hard filter.
+    safe = [PlannedAction(tool=a["tool"], args=a["args"]) for a in actions if a["tool"] in ALLOWED_TOOLS]
+
+    if len(safe) != len(actions):
+        log.warning("uid=%s dropped %d unrecognised actions", uid, len(actions) - len(safe))
+
+    log.info("uid=%s planned=%d cap=%d", uid, len(safe), MAX_ACTIONS)
+    return PlanResponse(actions=safe, reply=reply, model=MODEL)
 
 
 @app.post("/insights", response_model=InsightResponse)

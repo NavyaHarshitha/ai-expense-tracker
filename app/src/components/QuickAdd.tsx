@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { ActionPlan } from './ActionPlan'
 import { ParsedCandidates, needsConfirmation, type PendingCandidate } from './ParsedCandidates'
 import { VoiceButton } from './VoiceButton'
+import { usePlanExecutor } from '../hooks/usePlanExecutor'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
-import { type ParsedCandidate, parseExpenses } from '../lib/api'
+import { type ParsedCandidate, planActions } from '../lib/api'
 import { toPaise } from '../lib/money'
+import { isStructural, normaliseAll, type NormalisedAction } from '../lib/planActions'
 import {
   MOVEMENT_LABELS,
   PAYMENT_METHOD_LABELS,
@@ -34,6 +37,7 @@ setEditingId, rather than a separate edit screen.
 Defaults make the common case three fields: amount, what it was, which track.
 */
 export function QuickAdd({
+  uid,
   tracks,
   editing,
   onAdd,
@@ -41,6 +45,7 @@ export function QuickAdd({
   onDelete,
   onCancelEdit,
 }: {
+  uid: string
   tracks: Track[]
   editing?: Transaction | null
   onAdd: (txn: Omit<Transaction, 'id'>) => Promise<string>
@@ -129,12 +134,16 @@ export function QuickAdd({
     setTimeout(() => setFlash(''), 2000)
   }
 
-  // ---------------- voice capture ----------------
+  // ---------------- voice: one mic, two outcomes ----------------
 
   const [pending, setPending] = useState<PendingCandidate[]>([])
+  const [plan, setPlan] = useState<NormalisedAction[]>([])
+  const [voiceNote, setVoiceNote] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
 
-  /** Write one candidate through the SAME path the form uses - no second way in. */
+  const executor = usePlanExecutor(uid, tracks, onAdd)
+
+  /** Write one expense through the SAME path the form uses - no second way in. */
   const commit = useCallback(
     async (candidate: ParsedCandidate, trackIdForCandidate: string): Promise<string> => {
       return onAdd({
@@ -154,55 +163,104 @@ export function QuickAdd({
     [onAdd],
   )
 
+  /*
+  Everything spoken goes to the planner, because "spent 250 on lunch" and "my
+  rent is 18000 due on the 5th" are the same gesture to a person and should not
+  need two different buttons.
+
+  What comes back is then split by consequence:
+  - expenses are graded by amount (small ones commit with an Undo)
+  - structural changes always wait for an explicit Apply, because a wrong track
+    quietly distorts Safe-to-Spend every month afterwards
+  */
   const handleCaptured = useCallback(
     async (audioBase64: string, mimeType: string) => {
       setParseError(null)
+      setVoiceNote(null)
 
-      const candidates = await parseExpenses({
+      const result = await planActions({
         audioBase64,
         mimeType,
+        existingTracks: tracks.map((t) => ({ name: t.name, type: t.type })),
         categories: CATEGORIES,
-        methods: Object.keys(PAYMENT_METHOD_LABELS),
       })
 
-      if (candidates.length === 0) {
-        setParseError("Didn't catch an expense in that. Try \u201cspent 250 on lunch\u201d.")
+      const actions = normaliseAll(result.actions, tracks)
+
+      if (actions.length === 0) {
+        setParseError(
+          result.reply ||
+            "Didn't catch anything to do there. Try \u201cspent 250 on lunch\u201d, or \u201crent is 18000 due on the 5th\u201d.",
+        )
         return
       }
 
-      const fallbackTrack = tracks.find((t) => t.type === 'spending') ?? tracks[0]
+      const structural = actions.filter(isStructural)
+      const expenses = actions.filter((a) => !isStructural(a))
 
-      const items: PendingCandidate[] = candidates.map((candidate, i) => ({
-        key: `${Date.now()}-${i}`,
-        candidate,
-        trackId: fallbackTrack?.id ?? '',
-        status: 'pending',
-      }))
+      if (structural.length > 0) setPlan((prev) => [...prev, ...structural])
 
-      // Small, confidently-heard amounts commit immediately with an Undo; anything
-      // larger or uncertain waits for a tap. See CONFIRM_ABOVE_MINOR.
-      await Promise.all(
-        items.map(async (item) => {
-          if (!needsConfirmation(item.candidate) && item.trackId) {
-            item.savedId = await commit(item.candidate, item.trackId)
-            item.status = 'saved'
-          }
-        }),
-      )
+      if (expenses.length > 0) {
+        const fallbackTrack = tracks.find((t) => t.type === 'spending') ?? tracks[0]
 
-      setPending((prev) => [...items, ...prev])
+        const items: PendingCandidate[] = expenses.map((a, i) => ({
+          key: `${Date.now()}-${i}`,
+          candidate: {
+            amount_rupees: a.kind === 'create_expense' ? a.amountMinor / 100 : 0,
+            description: a.kind === 'create_expense' ? a.description : '',
+            category: a.kind === 'create_expense' ? a.category : 'Other',
+            payment_method: a.kind === 'create_expense' ? a.paymentMethod : 'upi',
+            occurred_on: a.kind === 'create_expense' ? (a.occurredOn ?? '') : '',
+            note: a.kind === 'create_expense' ? (a.note ?? '') : '',
+            // The planner does not score confidence, so amount alone decides
+            // whether this needs a tap.
+            confidence: 1,
+          },
+          trackId:
+            (a.kind === 'create_expense' &&
+              a.trackName &&
+              tracks.find((t) => t.name.toLowerCase() === a.trackName!.toLowerCase())?.id) ||
+            fallbackTrack?.id ||
+            '',
+          status: 'pending',
+        }))
+
+        await Promise.all(
+          items.map(async (item) => {
+            if (!needsConfirmation(item.candidate) && item.trackId) {
+              item.savedId = await commit(item.candidate, item.trackId)
+              item.status = 'saved'
+            }
+          }),
+        )
+
+        setPending((prev) => [...items, ...prev])
+      }
     },
-    [commit, tracks],
+    [commit, tracks, uid],
   )
 
   const voice = useVoiceCapture(handleCaptured)
 
+  async function applyPlan() {
+    const result = await executor.apply(plan)
+    if (!result) return
+
+    const bits: string[] = []
+    if (result.tracksCreated) bits.push(`${result.tracksCreated} track${result.tracksCreated === 1 ? '' : 's'} created`)
+    if (result.tracksUpdated) bits.push(`${result.tracksUpdated} updated`)
+    if (result.incomeSet) bits.push('income set')
+    if (result.expenseIds.length) bits.push(`${result.expenseIds.length} expense${result.expenseIds.length === 1 ? '' : 's'} recorded`)
+
+    setVoiceNote(bits.join(' · '))
+    setPlan([])
+    setTimeout(() => setVoiceNote(null), 4000)
+  }
+
   async function saveCandidate(key: string, edited: ParsedCandidate, trackIdForCandidate: string) {
     const savedId = await commit(edited, trackIdForCandidate)
     setPending((prev) =>
-      prev.map((p) =>
-        p.key === key ? { ...p, candidate: edited, status: 'saved', savedId } : p,
-      ),
+      prev.map((p) => (p.key === key ? { ...p, candidate: edited, status: 'saved', savedId } : p)),
     )
   }
 
@@ -211,9 +269,8 @@ export function QuickAdd({
   }
 
   /*
-  Undo genuinely undoes: it soft-deletes the row that was just written. This is
-  why commit threads the new document id back - a button labelled Undo that only
-  hides a card would be a UI that lies about what it did.
+  Undo genuinely undoes: it soft-deletes the row that was just written. A button
+  labelled Undo that only hid a card would be a UI that lies about what it did.
   */
   async function undoCandidate(key: string) {
     const item = pending.find((p) => p.key === key)
@@ -248,6 +305,18 @@ export function QuickAdd({
             }}
           />
 
+          <ActionPlan
+            actions={plan}
+            applying={executor.applying}
+            error={executor.error}
+            onApply={applyPlan}
+            onDiscard={() => {
+              setPlan([])
+              executor.clearError()
+            }}
+            onRemove={(index) => setPlan((prev) => prev.filter((_, i) => i !== index))}
+          />
+
           <ParsedCandidates
             pending={pending}
             tracks={tracks}
@@ -255,6 +324,12 @@ export function QuickAdd({
             onDiscard={discardCandidate}
             onUndo={undoCandidate}
           />
+
+          {voiceNote && (
+            <p className="m-0 rounded-field bg-primary-soft px-4 py-3 font-bold text-good">
+              {voiceNote}
+            </p>
+          )}
         </div>
       )}
 
