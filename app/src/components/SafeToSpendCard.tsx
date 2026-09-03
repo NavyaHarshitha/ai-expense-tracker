@@ -16,6 +16,12 @@ export function SafeToSpendCard({
   onIncomeChange: (minor: number) => void
 }) {
   const overspent = result.safeToSpendMinor < 0
+  const dayExhausted =
+    result.todayAllowanceMinor > 0 && result.spentTodayMinor > result.todayAllowanceMinor
+  const dayUsedPct =
+    result.todayAllowanceMinor > 0
+      ? Math.min(100, Math.round((result.spentTodayMinor / result.todayAllowanceMinor) * 100))
+      : 0
 
   /*
   Controlled, and re-synced when the stored value arrives. This was previously
@@ -40,10 +46,10 @@ export function SafeToSpendCard({
 
       <p
         className={`tnum m-0 mt-2 text-5xl font-extrabold tracking-tight sm:text-6xl ${
-          overspent ? 'text-danger' : 'text-primary-dark'
+          overspent || dayExhausted ? 'text-danger' : 'text-primary-dark'
         }`}
       >
-        {formatINR(result.todayAllowanceMinor)}
+        {formatINR(result.leftTodayMinor)}
       </p>
 
       <p className="mt-2 text-muted">
@@ -60,6 +66,48 @@ export function SafeToSpendCard({
           </>
         )}
       </p>
+
+      {/* What today has cost so far, against what today was worth. */}
+      {result.todayAllowanceMinor > 0 && (
+        <div className="mt-4">
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="text-muted">
+              {result.spentTodayMinor > 0 ? (
+                <>
+                  <strong className="tnum text-ink">{formatINR(result.spentTodayMinor)}</strong> of{' '}
+                  <span className="tnum">{formatINR(result.todayAllowanceMinor)}</span> spent today
+                </>
+              ) : (
+                <>
+                  Today&rsquo;s share is{' '}
+                  <span className="tnum font-bold text-ink">
+                    {formatINR(result.todayAllowanceMinor)}
+                  </span>
+                </>
+              )}
+            </span>
+            {dayExhausted && (
+              <span className="font-bold text-danger">
+                Over by {formatINR(result.spentTodayMinor - result.todayAllowanceMinor)}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-lavender">
+            <div
+              className={`h-full rounded-full transition-[width] duration-300 ${
+                dayExhausted ? 'bg-danger' : 'bg-primary'
+              }`}
+              style={{ width: `${dayUsedPct}%` }}
+            />
+          </div>
+
+          <p className="m-0 mt-2 text-sm text-muted">
+            Anything you don&rsquo;t spend today rolls into tomorrow &mdash; what&rsquo;s left
+            simply divides across one fewer day.
+          </p>
+        </div>
+      )}
 
       {/* The arithmetic, shown rather than hidden - a number you can't check is a number you won't trust. */}
       <dl className="mt-6 grid gap-x-6 gap-y-3 border-t border-line pt-5 sm:grid-cols-2">

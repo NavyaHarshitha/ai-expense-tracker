@@ -176,3 +176,139 @@ describe('money', () => {
     expect(formatINR(toPaise(100000))).toContain('1,00,000')
   })
 })
+
+
+// ---------------------------------------------------------------------------
+// Daily allowance and rollover
+// ---------------------------------------------------------------------------
+
+describe("today's allowance and rollover", () => {
+  // Navya's real shape: Rs 1,22,300 income, Rs 62,900 of commitments,
+  // Rs 15,000 into savings. Pool = Rs 44,400 across 28 days from 3 Sep.
+  const REAL_INCOME = toPaise(122300)
+  const realTracks: Track[] = [
+    { id: 'daily', name: 'Daily Expenses', type: 'spending', archived: false, monthlyLimitMinor: toPaise(20000) },
+    { id: 'rent', name: 'Rent', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(18000), dueDay: 5 },
+    { id: 'emi', name: 'Home Loan EMI', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(18400), dueDay: 28 },
+    { id: 'sip15', name: 'SIP 15th', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(15000), dueDay: 15 },
+    { id: 'sip6', name: 'SIP 6th', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(10000), dueDay: 6 },
+    { id: 'phone', name: 'Phone', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(1500), dueDay: 10 },
+    { id: 'fund', name: 'Emergency Fund', type: 'goal', archived: false, plannedMonthlyMinor: toPaise(10000), raidable: false },
+    { id: 'goa', name: 'Goa Trip', type: 'project', archived: false, plannedMonthlyMinor: toPaise(5000) },
+  ]
+
+  const SEP_3 = new Date(2026, 8, 3) // 3 Sep 2026, 28 days remaining
+
+  function realTxn(over: Partial<Transaction>): Transaction {
+    return {
+      id: 't', occurredOn: '2026-09-03', amountMinor: toPaise(600),
+      movement: 'expense', trackId: 'daily', categoryName: 'Food',
+      description: 'lunch', paymentMethod: 'upi', source: 'manual',
+      createdAt: 0, deletedAt: null,
+      ...over,
+    }
+  }
+
+  const compute = (transactions: Transaction[], today = SEP_3) =>
+    computeSafeToSpend({ monthlyIncomeMinor: REAL_INCOME, tracks: realTracks, transactions, today })
+
+  it("reserves commitments and savings, leaving a pool to divide", () => {
+    const r = compute([])
+    expect(r.committedMinor).toBe(toPaise(62900))
+    expect(r.plannedSavingsMinor).toBe(toPaise(15000))
+    expect(r.safeToSpendMinor).toBe(toPaise(44400))
+    expect(r.daysRemaining).toBe(28)
+    expect(r.todayAllowanceMinor).toBe(Math.floor(toPaise(44400) / 28)) // Rs 1,585
+    expect(r.leftTodayMinor).toBe(r.todayAllowanceMinor)
+  })
+
+  it("spending Rs 600 today reduces what's left today by exactly Rs 600", () => {
+    const before = compute([])
+    const after = compute([realTxn({ amountMinor: toPaise(600) })])
+
+    expect(after.spentTodayMinor).toBe(toPaise(600))
+    expect(before.leftTodayMinor - after.leftTodayMinor).toBe(toPaise(600))
+  })
+
+  it("does NOT move today's allowance when today is spent - only what's left of it", () => {
+    // The regression this guards: dividing the whole month's remainder would make
+    // today's own figure fall by 600/28 (about Rs 21) instead of by Rs 600.
+    const before = compute([])
+    const after = compute([realTxn({ amountMinor: toPaise(600) })])
+
+    expect(after.todayAllowanceMinor).toBe(before.todayAllowanceMinor)
+    expect(after.safeToSpendMinor).toBe(before.safeToSpendMinor - toPaise(600))
+  })
+
+  it("rolls unspent money into tomorrow by dividing across one fewer day", () => {
+    // Spent Rs 600 of Rs 1,585 on the 3rd; the other Rs 985 is not lost.
+    const spentYesterday = [realTxn({ occurredOn: '2026-09-03', amountMinor: toPaise(600) })]
+
+    const day3 = compute(spentYesterday, new Date(2026, 8, 3))
+    const day4 = compute(spentYesterday, new Date(2026, 8, 4))
+
+    expect(day4.spentTodayMinor).toBe(0)
+    expect(day4.daysRemaining).toBe(27)
+    // Rs 43,800 over 27 days beats Rs 44,400 over 28.
+    expect(day4.todayAllowanceMinor).toBeGreaterThan(day3.todayAllowanceMinor)
+    expect(day4.todayAllowanceMinor).toBe(Math.floor(toPaise(43800) / 27))
+  })
+
+  it("lowers tomorrow's allowance after an overspent day", () => {
+    const blowout = [realTxn({ amountMinor: toPaise(5000) })]
+
+    const day3 = compute(blowout, new Date(2026, 8, 3))
+    const day4 = compute(blowout, new Date(2026, 8, 4))
+
+    expect(day3.leftTodayMinor).toBe(0) // never negative
+    expect(day4.todayAllowanceMinor).toBeLessThan(day3.todayAllowanceMinor)
+  })
+
+  it("shows nothing left rather than a negative figure once the day is gone", () => {
+    const r = compute([realTxn({ amountMinor: toPaise(9999) })])
+    expect(r.leftTodayMinor).toBe(0)
+    expect(r.spentTodayMinor).toBe(toPaise(9999))
+  })
+
+  it("gives a refund today back to today", () => {
+    const r = compute([
+      realTxn({ id: 'a', amountMinor: toPaise(1000) }),
+      realTxn({ id: 'r', amountMinor: toPaise(400), movement: 'refund' }),
+    ])
+    expect(r.spentTodayMinor).toBe(toPaise(600))
+  })
+
+  it("ignores a commitment paid today - it was already reserved", () => {
+    // Rent leaving the account must not also eat today's discretionary budget.
+    const r = compute([realTxn({ trackId: 'rent', amountMinor: toPaise(18000) })])
+    expect(r.spentTodayMinor).toBe(0)
+    expect(r.leftTodayMinor).toBe(r.todayAllowanceMinor)
+  })
+
+  it("ignores a savings transfer today", () => {
+    const r = compute([realTxn({ trackId: 'fund', amountMinor: toPaise(10000), movement: 'transfer' })])
+    expect(r.spentTodayMinor).toBe(0)
+  })
+
+  it("counts only today, not yesterday", () => {
+    const r = compute([
+      realTxn({ id: 'y', occurredOn: '2026-09-02', amountMinor: toPaise(2000) }),
+      realTxn({ id: 't', occurredOn: '2026-09-03', amountMinor: toPaise(600) }),
+    ])
+    expect(r.spentTodayMinor).toBe(toPaise(600))
+    expect(r.spentMinor).toBe(toPaise(2600))
+  })
+
+  it("hands the whole remaining pool to the last day of the month", () => {
+    const r = compute([], new Date(2026, 8, 30)) // 30 Sep, 1 day left
+    expect(r.daysRemaining).toBe(1)
+    expect(r.todayAllowanceMinor).toBe(toPaise(44400))
+  })
+
+  it("shows zero today when the month is already overspent", () => {
+    const r = compute([realTxn({ occurredOn: '2026-09-01', amountMinor: toPaise(50000) })])
+    expect(r.safeToSpendMinor).toBeLessThan(0)
+    expect(r.todayAllowanceMinor).toBe(0)
+    expect(r.leftTodayMinor).toBe(0)
+  })
+})

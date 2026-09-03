@@ -153,7 +153,17 @@ export function usePlanExecutor(
         remove exactly the row it created. There are at most a handful per
         utterance, so the extra round trips cost nothing.
         */
-        const fallbackTrack = tracks.find((t) => t.type === 'spending') ?? tracks[0]
+        /*
+        Resolution order matters: a track created by this same plan wins, then an
+        existing track by name, then a sensible default.
+
+        The last fallback includes tracks created moments ago in this batch -
+        without it, the very first thing a new user says ("spent 250 on lunch")
+        would create a track and then fail to attach the expense to it.
+        */
+        const firstNewTrackId = [...newTrackIds.values()][0]
+        const fallbackId =
+          tracks.find((t) => t.type === 'spending')?.id ?? tracks[0]?.id ?? firstNewTrackId
 
         for (const action of actions) {
           if (action.kind !== 'create_expense') continue
@@ -162,9 +172,12 @@ export function usePlanExecutor(
           const trackId =
             (wanted && newTrackIds.get(wanted)) ||
             (wanted && tracks.find((t) => t.name.toLowerCase() === wanted)?.id) ||
-            fallbackTrack?.id
+            fallbackId
 
-          if (!trackId) continue
+          if (!trackId) {
+            console.warn('Skipped an expense with no track to attach it to')
+            continue
+          }
 
           const id = await createTransaction(uid, {
             occurredOn: action.occurredOn ?? todayIso(),

@@ -198,7 +198,29 @@ export function QuickAdd({
       const structural = actions.filter(isStructural)
       const expenses = actions.filter((a) => !isStructural(a))
 
-      if (structural.length > 0) setPlan((prev) => [...prev, ...structural])
+      /*
+      If the utterance changes structure at all, EVERYTHING goes into the plan and
+      applies together behind one tap - expenses included.
+
+      This is an ordering requirement, not a preference. An expense may depend on
+      a track created by the same sentence, so letting small expenses auto-commit
+      here would write them before their track existed. The same applies with no
+      tracks at all: there is nothing to attach to yet, so a home has to be
+      created first and shown in the preview rather than conjured silently.
+      */
+      const noTracksYet = tracks.length === 0
+      const routeAllToPlan = structural.length > 0 || (noTracksYet && expenses.length > 0)
+
+      if (routeAllToPlan) {
+        const needsHome = noTracksYet && !actions.some((a) => a.kind === 'create_track')
+
+        const home: NormalisedAction[] = needsHome
+          ? [{ kind: 'create_track', name: 'Daily Expenses', type: 'spending' }]
+          : []
+
+        setPlan((prev) => [...prev, ...home, ...actions])
+        return
+      }
 
       if (expenses.length > 0) {
         const fallbackTrack = tracks.find((t) => t.type === 'spending') ?? tracks[0]
@@ -278,16 +300,6 @@ export function QuickAdd({
     setPending((prev) => prev.filter((p) => p.key !== key))
   }
 
-  if (tracks.length === 0) {
-    return (
-      <section className={cardPadded}>
-        <p className="m-0 text-center text-muted">
-          Create a track on the Home page first &mdash; every expense comes out of one.
-        </p>
-      </section>
-    )
-  }
-
   return (
     <section className={`${cardPadded} ${editing ? 'border-l-4 border-l-primary' : ''}`}>
       {!editing && (
@@ -333,6 +345,13 @@ export function QuickAdd({
         </div>
       )}
 
+      {tracks.length === 0 && !editing ? (
+        <p className="m-0 text-center text-muted">
+          No tracks yet. Speak to set one up &mdash; try &ldquo;rent is 18000 due on the 5th&rdquo;
+          &mdash; or add one by hand on the Home page.
+        </p>
+      ) : (
+        <>
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className={`${sectionTitle} mb-0`}>
           {editing ? 'Edit Expense' : 'Or type it in'}
@@ -503,6 +522,8 @@ export function QuickAdd({
           {flash && <span className="text-sm font-bold text-good">{flash}</span>}
         </div>
       </form>
+        </>
+      )}
     </section>
   )
 }

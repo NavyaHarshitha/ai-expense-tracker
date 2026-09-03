@@ -230,6 +230,11 @@ Amount rules:
 If the instruction names an EXISTING track, call update_track rather than
 creating a duplicate. The existing tracks are given to you.
 
+If the instruction records an expense and NO existing track suits it, also call
+create_track for a spending track to hold it - "Daily Expenses" is a reasonable
+default - and put that name in the expense's track_name. Every expense must come
+out of a track.
+
 If the instruction is not actionable - a question, or something these functions
 cannot do - call nothing and reply in one short sentence saying so."""
 
