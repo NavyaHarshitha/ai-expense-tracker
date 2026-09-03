@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
+import { ParsedCandidates, needsConfirmation, type PendingCandidate } from './ParsedCandidates'
+import { VoiceButton } from './VoiceButton'
+import { useVoiceCapture } from '../hooks/useVoiceCapture'
+import { type ParsedCandidate, parseExpenses } from '../lib/api'
 import { toPaise } from '../lib/money'
 import {
   MOVEMENT_LABELS,
@@ -34,12 +38,14 @@ export function QuickAdd({
   editing,
   onAdd,
   onUpdate,
+  onDelete,
   onCancelEdit,
 }: {
   tracks: Track[]
   editing?: Transaction | null
-  onAdd: (txn: Omit<Transaction, 'id'>) => Promise<void>
+  onAdd: (txn: Omit<Transaction, 'id'>) => Promise<string>
   onUpdate: (id: string, patch: Partial<Transaction>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
   onCancelEdit: () => void
 }) {
   const [amount, setAmount] = useState('')
@@ -123,6 +129,98 @@ export function QuickAdd({
     setTimeout(() => setFlash(''), 2000)
   }
 
+  // ---------------- voice capture ----------------
+
+  const [pending, setPending] = useState<PendingCandidate[]>([])
+  const [parseError, setParseError] = useState<string | null>(null)
+
+  /** Write one candidate through the SAME path the form uses - no second way in. */
+  const commit = useCallback(
+    async (candidate: ParsedCandidate, trackIdForCandidate: string): Promise<string> => {
+      return onAdd({
+        occurredOn: candidate.occurred_on || todayIso(),
+        amountMinor: toPaise(candidate.amount_rupees),
+        movement: 'expense',
+        trackId: trackIdForCandidate,
+        categoryName: candidate.category,
+        description: candidate.description || candidate.category,
+        ...(candidate.note ? { note: candidate.note } : {}),
+        paymentMethod: candidate.payment_method,
+        source: 'voice',
+        createdAt: Date.now(),
+        deletedAt: null,
+      })
+    },
+    [onAdd],
+  )
+
+  const handleCaptured = useCallback(
+    async (audioBase64: string, mimeType: string) => {
+      setParseError(null)
+
+      const candidates = await parseExpenses({
+        audioBase64,
+        mimeType,
+        categories: CATEGORIES,
+        methods: Object.keys(PAYMENT_METHOD_LABELS),
+      })
+
+      if (candidates.length === 0) {
+        setParseError("Didn't catch an expense in that. Try \u201cspent 250 on lunch\u201d.")
+        return
+      }
+
+      const fallbackTrack = tracks.find((t) => t.type === 'spending') ?? tracks[0]
+
+      const items: PendingCandidate[] = candidates.map((candidate, i) => ({
+        key: `${Date.now()}-${i}`,
+        candidate,
+        trackId: fallbackTrack?.id ?? '',
+        status: 'pending',
+      }))
+
+      // Small, confidently-heard amounts commit immediately with an Undo; anything
+      // larger or uncertain waits for a tap. See CONFIRM_ABOVE_MINOR.
+      await Promise.all(
+        items.map(async (item) => {
+          if (!needsConfirmation(item.candidate) && item.trackId) {
+            item.savedId = await commit(item.candidate, item.trackId)
+            item.status = 'saved'
+          }
+        }),
+      )
+
+      setPending((prev) => [...items, ...prev])
+    },
+    [commit, tracks],
+  )
+
+  const voice = useVoiceCapture(handleCaptured)
+
+  async function saveCandidate(key: string, edited: ParsedCandidate, trackIdForCandidate: string) {
+    const savedId = await commit(edited, trackIdForCandidate)
+    setPending((prev) =>
+      prev.map((p) =>
+        p.key === key ? { ...p, candidate: edited, status: 'saved', savedId } : p,
+      ),
+    )
+  }
+
+  function discardCandidate(key: string) {
+    setPending((prev) => prev.filter((p) => p.key !== key))
+  }
+
+  /*
+  Undo genuinely undoes: it soft-deletes the row that was just written. This is
+  why commit threads the new document id back - a button labelled Undo that only
+  hides a card would be a UI that lies about what it did.
+  */
+  async function undoCandidate(key: string) {
+    const item = pending.find((p) => p.key === key)
+    if (item?.savedId) await onDelete(item.savedId)
+    setPending((prev) => prev.filter((p) => p.key !== key))
+  }
+
   if (tracks.length === 0) {
     return (
       <section className={cardPadded}>
@@ -135,8 +233,35 @@ export function QuickAdd({
 
   return (
     <section className={`${cardPadded} ${editing ? 'border-l-4 border-l-primary' : ''}`}>
+      {!editing && (
+        <div className="mb-6 grid gap-4">
+          <VoiceButton
+            state={voice.state}
+            error={voice.error ?? parseError}
+            supported={voice.supported}
+            onStart={voice.start}
+            onStop={voice.stop}
+            onCancel={voice.cancel}
+            onDismissError={() => {
+              voice.reset()
+              setParseError(null)
+            }}
+          />
+
+          <ParsedCandidates
+            pending={pending}
+            tracks={tracks}
+            onSave={saveCandidate}
+            onDiscard={discardCandidate}
+            onUndo={undoCandidate}
+          />
+        </div>
+      )}
+
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className={`${sectionTitle} mb-0`}>{editing ? 'Edit Expense' : 'Add Expense'}</h2>
+        <h2 className={`${sectionTitle} mb-0`}>
+          {editing ? 'Edit Expense' : 'Or type it in'}
+        </h2>
         {editing && (
           <span className="text-sm text-muted">
             Editing &ldquo;{editing.description}&rdquo; from {editing.occurredOn}

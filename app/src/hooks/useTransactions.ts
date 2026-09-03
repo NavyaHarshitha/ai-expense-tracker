@@ -36,8 +36,10 @@ export function useTransactions(uid: string | undefined) {
     )
   }, [uid])
 
-  async function createTransaction(uid: string, txn: Omit<Transaction, 'id'>) {
-    await addDoc(collection(db, userPath(uid, 'transactions')), txn)
+  /** Returns the new document id, so callers can offer a real Undo. */
+  async function createTransaction(uid: string, txn: Omit<Transaction, 'id'>): Promise<string> {
+    const ref = await addDoc(collection(db, userPath(uid, 'transactions')), txn)
+    return ref.id
   }
 
   /**

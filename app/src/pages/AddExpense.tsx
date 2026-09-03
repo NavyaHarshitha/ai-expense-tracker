@@ -57,6 +57,7 @@ export function AddExpense() {
           editing={editing}
           onAdd={(txn) => createTransaction(uid, txn)}
           onUpdate={(id, patch) => updateTransaction(uid, id, patch)}
+          onDelete={(id) => softDelete(uid, id)}
           onCancelEdit={() => setEditing(null)}
         />
       </div>

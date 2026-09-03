@@ -19,7 +19,7 @@ export interface AppContext {
   createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
   archiveTrack: (uid: string, id: string) => Promise<void>
-  createTransaction: (uid: string, txn: Omit<Transaction, 'id'>) => Promise<void>
+  createTransaction: (uid: string, txn: Omit<Transaction, 'id'>) => Promise<string>
   updateTransaction: (uid: string, id: string, patch: Partial<Transaction>) => Promise<void>
   softDelete: (uid: string, id: string) => Promise<void>
   setIncome: (uid: string, minor: number) => Promise<void>
