@@ -113,6 +113,14 @@ export async function planActions(input: {
   mimeType?: string
   existingTracks: Array<{ name: string; type: string }>
   categories: string[]
+  /** Enough to identify a row the user refers to - never the whole ledger. */
+  recentTransactions?: Array<{
+    id: string
+    date: string
+    description: string
+    amount: number
+    category: string
+  }>
 }): Promise<PlanResult> {
   /*
   `today` is the CLIENT's local date, and it matters.
@@ -129,6 +137,7 @@ export async function planActions(input: {
     mime_type: input.mimeType,
     existing_tracks: input.existingTracks,
     categories: input.categories,
+    recent_transactions: input.recentTransactions ?? [],
     today: todayKey(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   })

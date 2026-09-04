@@ -318,3 +318,70 @@ describe('create_category from voice', () => {
     expect(describeAction(a)).toContain('Pets')
   })
 })
+
+describe('corrections by voice', () => {
+  const fix = (args: Record<string, unknown>) =>
+    normalise({ tool: 'update_expense', args }, existing, TODAY)
+
+  it('recategorises an existing entry', () => {
+    expect(fix({ transaction_id: 'abc123', category: 'Salary' }))
+      .toMatchObject({ kind: 'update_expense', transactionId: 'abc123', category: 'Salary' })
+  })
+
+  it('corrects an amount', () => {
+    expect(fix({ transaction_id: 'abc', amount_rupees: 250 }))
+      .toMatchObject({ amountMinor: toPaise(250) })
+  })
+
+  it('needs an id - a correction with nothing to point at is not applicable', () => {
+    expect(fix({ category: 'Salary' })).toBeNull()
+  })
+
+  it('returns null when nothing would actually change', () => {
+    // Otherwise the preview shows "Correct an entry" that does nothing at all.
+    expect(fix({ transaction_id: 'abc123' })).toBeNull()
+  })
+
+  it('ignores an out-of-range date on a correction too', () => {
+    expect(fix({ transaction_id: 'abc', occurred_on: '2019-01-01' })).toBeNull()
+    expect(fix({ transaction_id: 'abc', occurred_on: '2026-09-02' }))
+      .toMatchObject({ occurredOn: '2026-09-02' })
+  })
+
+  it('allows clearing a note with an empty string', () => {
+    expect(fix({ transaction_id: 'abc', note: '' })).toMatchObject({ note: '' })
+  })
+
+  it('is structural, so a correction always waits for confirmation', () => {
+    expect(isStructural(fix({ transaction_id: 'abc', category: 'Salary' })!)).toBe(true)
+  })
+})
+
+describe('renaming a category by voice', () => {
+  const ren = (args: Record<string, unknown>) =>
+    normalise({ tool: 'rename_category', args }, existing, TODAY)
+
+  it('normalises a rename', () => {
+    expect(ren({ current_name: 'Other', new_name: 'Salary' }))
+      .toMatchObject({ kind: 'rename_category', currentName: 'Other', newName: 'Salary' })
+  })
+
+  it('rejects a no-op rename', () => {
+    expect(ren({ current_name: 'Food', new_name: 'Food' })).toBeNull()
+  })
+
+  it('rejects a half-stated rename', () => {
+    expect(ren({ current_name: 'Food' })).toBeNull()
+    expect(ren({ new_name: 'Food' })).toBeNull()
+  })
+
+  it('says in words that past entries move, since that is the surprising part', () => {
+    const a = ren({ current_name: 'Other', new_name: 'Salary' })!
+    expect(describeAction(a)).toContain('past entries')
+  })
+
+  it('describes a merge differently from a rename', () => {
+    const a = { ...ren({ current_name: 'Other', new_name: 'Food' })!, merge: true }
+    expect(describeAction(a)).toContain('Merge')
+  })
+})

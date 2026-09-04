@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { collection, doc, writeBatch } from 'firebase/firestore'
+import { collection, doc, updateDoc, writeBatch } from 'firebase/firestore'
 
 import { checkDuplicate, slugify } from '../lib/categories'
 import { db, userPath } from '../lib/firebase'
@@ -28,6 +28,10 @@ export interface ApplyResult {
   incomeSet: boolean
   balanceSet: boolean
   categoriesCreated: number
+  expensesUpdated: number
+  categoriesRenamed: number
+  /** Past entries moved by a category rename, so the summary can say how many. */
+  rowsRecategorised: number
   expenseIds: string[]
 }
 
@@ -41,6 +45,12 @@ export function usePlanExecutor(
   uid: string,
   tracks: Track[],
   categories: Category[],
+  /** Renames the category AND carries it through history. Chunked internally. */
+  renameCategoryWithHistory: (
+    uid: string,
+    category: Category,
+    newName: string,
+  ) => Promise<{ rowsUpdated: number }>,
   /** Already bound to the signed-in user by the caller - takes the txn alone. */
   createTransaction: (txn: Omit<Transaction, 'id'>) => Promise<string>,
 ) {
@@ -58,8 +68,11 @@ export function usePlanExecutor(
         tracksCreated: 0,
         tracksUpdated: 0,
         incomeSet: false,
-          balanceSet: false,
-          categoriesCreated: 0,
+        balanceSet: false,
+        categoriesCreated: 0,
+        expensesUpdated: 0,
+        categoriesRenamed: 0,
+        rowsRecategorised: 0,
         expenseIds: [],
       }
 
@@ -157,6 +170,33 @@ export function usePlanExecutor(
             result.incomeSet = true
           }
 
+          if (action.kind === 'update_expense') {
+            /*
+            Correcting an existing row, not writing a new one. Only the named
+            fields are touched, so createdAt, source and deletedAt survive - the
+            provenance of how an expense was captured must not change because
+            its category was fixed.
+            */
+            const patch: Record<string, unknown> = { updatedAt: Date.now() }
+
+            if (action.category !== undefined) patch.categoryName = action.category
+            if (action.amountMinor !== undefined) patch.amountMinor = action.amountMinor
+            if (action.description !== undefined) patch.description = action.description
+            if (action.occurredOn !== undefined) patch.occurredOn = action.occurredOn
+            if (action.note !== undefined) patch.note = action.note
+
+            if (action.trackName) {
+              const wanted = action.trackName.toLowerCase()
+              const resolved =
+                newTrackIds.get(wanted) ??
+                tracks.find((t) => t.name.toLowerCase() === wanted)?.id
+              if (resolved) patch.trackId = resolved
+            }
+
+            batch.update(doc(db, userPath(uid, 'transactions'), action.transactionId), patch)
+            result.expensesUpdated += 1
+          }
+
           if (action.kind === 'create_category') {
             /*
             Last line of defence against sprawl. The planner is told to prefer
@@ -197,6 +237,39 @@ export function usePlanExecutor(
 
         // One network round trip, atomic.
         await batch.commit()
+
+        /*
+        Category renames run AFTER the batch and outside it, because carrying a
+        name through history needs a query first and a batch cannot read.
+
+        A rename onto a name that already exists is a MERGE: the transactions
+        move to the surviving category and the source is archived, rather than
+        leaving two categories with the same name in every dropdown.
+        */
+        for (const action of actions) {
+          if (action.kind !== 'rename_category') continue
+
+          const source = categories.find(
+            (c) => !c.archived && c.name.toLowerCase() === action.currentName.toLowerCase(),
+          )
+          if (!source) continue
+
+          const target = categories.find(
+            (c) =>
+              !c.archived &&
+              c.id !== source.id &&
+              c.name.toLowerCase() === action.newName.toLowerCase(),
+          )
+
+          const { rowsUpdated } = await renameCategoryWithHistory(uid, source, action.newName)
+          result.categoriesRenamed += 1
+          result.rowsRecategorised += rowsUpdated
+
+          if (target) {
+            // Two categories now share a name - retire the one we just renamed.
+            await updateDoc(doc(db, userPath(uid, 'categories'), source.id), { archived: true })
+          }
+        }
 
         /*
         Expenses are written individually rather than batched, deliberately:

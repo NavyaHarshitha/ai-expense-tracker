@@ -22,6 +22,7 @@ export function AddExpense() {
     createTransaction,
     updateTransaction,
     softDelete,
+    renameCategory,
   } = useApp()
 
   // Names only, ordered for a dropdown - the components never need the docs.
@@ -69,6 +70,8 @@ export function AddExpense() {
           tracks={tracks}
           categories={categoryNameList}
           categoryDocs={categories}
+          recent={transactions}
+          onRenameCategory={renameCategory}
           today={today}
           editing={editing}
           onAdd={(txn) => createTransaction(uid, txn)}

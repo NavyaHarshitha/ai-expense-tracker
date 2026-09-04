@@ -41,6 +41,8 @@ export function QuickAdd({
   tracks,
   categories,
   categoryDocs,
+  recent,
+  onRenameCategory,
   today,
   editing,
   onAdd,
@@ -52,6 +54,13 @@ export function QuickAdd({
   tracks: Track[]
   categories: string[]
   categoryDocs: Category[]
+  /** Recent rows so voice can refer to one it needs to correct. */
+  recent: Transaction[]
+  onRenameCategory: (
+    uid: string,
+    category: Category,
+    newName: string,
+  ) => Promise<{ rowsUpdated: number }>
   today: Date
   editing?: Transaction | null
   onAdd: (txn: Omit<Transaction, 'id'>) => Promise<string>
@@ -155,7 +164,7 @@ export function QuickAdd({
   const [replanning, setReplanning] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
 
-  const executor = usePlanExecutor(uid, tracks, categoryDocs, onAdd)
+  const executor = usePlanExecutor(uid, tracks, categoryDocs, onRenameCategory, onAdd)
 
   /** Write one expense through the SAME path the form uses - no second way in. */
   const commit = useCallback(
@@ -200,13 +209,34 @@ export function QuickAdd({
         ...input,
         existingTracks: tracks.map((t) => ({ name: t.name, type: t.type })),
         categories,
+        // Only what is needed to point at a row - never the whole ledger.
+        recentTransactions: recent.slice(0, 40).map((t) => ({
+          id: t.id,
+          date: t.occurredOn,
+          description: t.description,
+          amount: t.amountMinor / 100,
+          category: t.categoryName,
+        })),
       })
 
       // Shown even when nothing is actionable - that is exactly when knowing
       // what it heard is most useful.
       setTranscript(result.transcript ?? '')
 
-      const actions = normaliseAll(result.actions, tracks, today)
+      const actions = normaliseAll(result.actions, tracks, today).map((a) => {
+        // Label the row being corrected, and say whether a rename is really a merge.
+        if (a.kind === 'update_expense') {
+          const row = recent.find((t) => t.id === a.transactionId)
+          return { ...a, currentDescription: row?.description }
+        }
+        if (a.kind === 'rename_category') {
+          const merge = categoryDocs.some(
+            (c) => !c.archived && c.name.toLowerCase() === a.newName.toLowerCase(),
+          )
+          return { ...a, merge }
+        }
+        return a
+      })
 
       if (actions.length === 0) {
         setParseError(
@@ -280,7 +310,7 @@ export function QuickAdd({
         setPending((prev) => [...items, ...prev])
       }
     },
-    [commit, tracks, today, uid],
+    [commit, tracks, categoryDocs, recent, today, uid],
   )
 
   const handleCaptured = useCallback(

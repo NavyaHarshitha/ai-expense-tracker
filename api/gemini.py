@@ -244,6 +244,18 @@ A stated current holding is never a target and never a monthly amount.
 
 "My account has 84 thousand" is the BANK balance - set_bank_balance - not a track.
 
+CORRECTIONS. You are given the most recent transactions with their ids. When the user
+wants to fix something already recorded - "change the salary credited category to
+salary", "that lunch was 250 not 2500", "put the vet bill under Health" - find the
+matching transaction in that list and call update_expense with its id. Do NOT create a
+new expense to correct an old one.
+
+If the corrected category does not exist yet, call create_category as well and use that
+name.
+
+To change a category everywhere rather than on one entry - "rename Other to Salary",
+"move everything from Food to Eating Out" - call rename_category.
+
 CATEGORIES. You are given the ones that exist. Use them. Only call
 create_category when the user explicitly asks ("add a category for pets") or
 when an expense truly fits none of them. Never create a variant of one that
@@ -375,6 +387,47 @@ TOOLS = [
                 },
             },
             {
+                "name": "update_expense",
+                "description": (
+                    "Correct an expense that is already recorded - its category, track, "
+                    "amount, description or date. Use the transaction_id from the recent "
+                    "transactions you were given. This is how a miscategorised entry gets "
+                    "fixed."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "transaction_id": {
+                            "type": "STRING",
+                            "description": "id from the recent transactions list",
+                        },
+                        "category": {"type": "STRING"},
+                        "track_name": {"type": "STRING"},
+                        "amount_rupees": {"type": "NUMBER"},
+                        "description": {"type": "STRING"},
+                        "occurred_on": {"type": "STRING", "description": "ISO YYYY-MM-DD"},
+                        "note": {"type": "STRING"},
+                    },
+                    "required": ["transaction_id"],
+                },
+            },
+            {
+                "name": "rename_category",
+                "description": (
+                    "Rename an existing category, carrying the change through every past "
+                    "entry. If the new name already exists this MERGES into it instead. Use "
+                    "for \"rename Other to Salary\" or \"move everything from Food to Eating Out\"."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "current_name": {"type": "STRING"},
+                        "new_name": {"type": "STRING"},
+                    },
+                    "required": ["current_name", "new_name"],
+                },
+            },
+            {
                 "name": "create_category",
                 "description": (
                     "Create a NEW expense category. Only when the user explicitly asks for one, "
@@ -429,6 +482,7 @@ def plan_actions(
     mime_type: str | None,
     existing_tracks: list[dict],
     categories: list[str],
+    recent_transactions: list[dict] | None = None,
     today: str | None = None,
     timezone: str | None = None,
 ) -> tuple[list[dict], str, str]:
@@ -457,6 +511,17 @@ def plan_actions(
 
     track_summary = (
         "\n".join(f"- {t.get('name')} ({t.get('type')})" for t in existing_tracks)
+        or "- (none yet)"
+    )
+
+    # Enough to identify an entry the user is referring to, and no more - the
+    # planner never needs the whole ledger.
+    recent_summary = (
+        "\n".join(
+            f"- id={t.get('id')} | {t.get('date')} | {t.get('description')} | "
+            f"Rs {t.get('amount')} | {t.get('category')}"
+            for t in (recent_transactions or [])
+        )
         or "- (none yet)"
     )
 

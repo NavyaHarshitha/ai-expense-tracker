@@ -79,6 +79,8 @@ class PlanRequest(BaseModel):
     """Name and type only - the planner never needs amounts or the ledger itself."""
     existing_tracks: list[dict] = Field(default_factory=list)
     categories: list[str] = Field(default_factory=lambda: list(DEFAULT_CATEGORIES))
+    """Recent rows as {id, date, description, amount, category} - for corrections."""
+    recent_transactions: list[dict] = Field(default_factory=list)
     """The client's own local date (YYYY-MM-DD) and IANA zone. See gemini.py."""
     today: str | None = None
     timezone: str | None = None
@@ -174,6 +176,8 @@ ALLOWED_TOOLS = {
     "set_monthly_income",
     "set_bank_balance",
     "create_category",
+    "update_expense",
+    "rename_category",
 }
 
 
@@ -199,6 +203,7 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
             mime_type=req.mime_type,
             existing_tracks=req.existing_tracks,
             categories=req.categories or DEFAULT_CATEGORIES,
+            recent_transactions=req.recent_transactions[:40],
             today=req.today,
             timezone=req.timezone,
         )

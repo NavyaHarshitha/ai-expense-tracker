@@ -54,6 +54,25 @@ export type NormalisedAction =
       name: string
     }
   | {
+      kind: 'update_expense'
+      transactionId: string
+      /** What it is now, purely so the preview can say what is changing. */
+      currentDescription?: string
+      category?: string
+      trackName?: string
+      amountMinor?: number
+      description?: string
+      occurredOn?: string
+      note?: string
+    }
+  | {
+      kind: 'rename_category'
+      currentName: string
+      newName: string
+      /** True when the target already exists, so this is a merge rather than a rename. */
+      merge: boolean
+    }
+  | {
       kind: 'create_expense'
       amountMinor: number
       description: string
@@ -166,6 +185,40 @@ export function normalise(
       return { kind: 'set_income', amountMinor }
     }
 
+    case 'update_expense': {
+      const transactionId = str(a.transaction_id)
+      if (!transactionId) return null
+
+      const patch = {
+        kind: 'update_expense' as const,
+        transactionId,
+        category: str(a.category) || undefined,
+        trackName: str(a.track_name) || undefined,
+        amountMinor: minor(a.amount_rupees),
+        description: str(a.description) || undefined,
+        occurredOn: validDate(a.occurred_on, today) ? (a.occurred_on as string) : undefined,
+        note: typeof a.note === 'string' ? a.note.trim() : undefined,
+      }
+
+      // A correction that changes nothing is not worth showing or applying.
+      const changesSomething =
+        patch.category !== undefined ||
+        patch.trackName !== undefined ||
+        patch.amountMinor !== undefined ||
+        patch.description !== undefined ||
+        patch.occurredOn !== undefined ||
+        patch.note !== undefined
+
+      return changesSomething ? patch : null
+    }
+
+    case 'rename_category': {
+      const currentName = str(a.current_name)
+      const newName = str(a.new_name)
+      if (!currentName || !newName || currentName === newName) return null
+      return { kind: 'rename_category', currentName, newName, merge: false }
+    }
+
     case 'create_category': {
       const name = str(a.name)
       if (!name) return null
@@ -269,6 +322,23 @@ export function describe(action: NormalisedAction): string {
 
     case 'create_category':
       return `Add category “${action.name}”`
+
+    case 'update_expense': {
+      const bits: string[] = [
+        `Correct ${action.currentDescription ? `“${action.currentDescription}”` : 'an entry'}`,
+      ]
+      if (action.category) bits.push(`category to ${action.category}`)
+      if (action.trackName) bits.push(`track to ${action.trackName}`)
+      if (action.amountMinor !== undefined) bits.push(`amount to ${formatINR(action.amountMinor)}`)
+      if (action.description) bits.push(`description to “${action.description}”`)
+      if (action.occurredOn) bits.push(`date to ${action.occurredOn}`)
+      return bits.join(' · ')
+    }
+
+    case 'rename_category':
+      return action.merge
+        ? `Merge category “${action.currentName}” into “${action.newName}”, updating past entries`
+        : `Rename category “${action.currentName}” to “${action.newName}”, updating past entries`
 
     case 'create_expense':
       return `Record ${formatINR(action.amountMinor)} · ${action.description} · ${action.category}${
