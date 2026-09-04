@@ -5,12 +5,13 @@ import { SignIn } from './components/SignIn'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
 import { useTracks } from './hooks/useTracks'
+import { useCategories } from './hooks/useCategories'
 import { useToday } from './hooks/useToday'
 import { useTransactions } from './hooks/useTransactions'
 import { computeBalance, type BalanceResult } from './lib/balance'
 import { computeSafeToSpend, type SafeToSpendResult } from './lib/safeToSpend'
 import { linkButton } from './lib/ui'
-import type { Track, Transaction } from './lib/types'
+import type { Category, Track, Transaction } from './lib/types'
 
 export interface AppContext {
   uid: string
@@ -18,6 +19,7 @@ export interface AppContext {
   transactions: Transaction[]
   result: SafeToSpendResult
   balance: BalanceResult
+  categories: Category[]
   today: Date
   createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
@@ -27,6 +29,10 @@ export interface AppContext {
   softDelete: (uid: string, id: string) => Promise<void>
   setIncome: (uid: string, minor: number) => Promise<void>
   setBalanceAnchor: (uid: string, minor: number, on: string) => Promise<void>
+  createCategory: (uid: string, name: string, from?: Category['createdFrom']) => Promise<void>
+  renameCategory: (uid: string, category: Category, name: string) => Promise<{ rowsUpdated: number }>
+  archiveCategory: (uid: string, id: string) => Promise<void>
+  restoreCategory: (uid: string, id: string) => Promise<void>
 }
 
 /** Typed accessor so pages don't repeat the generic. */
@@ -46,8 +52,22 @@ export default function App() {
 
   const { active: tracks, createTrack, updateTrack, archiveTrack } = useTracks(uid)
   const { transactions, createTransaction, updateTransaction, softDelete } = useTransactions(uid)
-  const { monthlyIncomeMinor, balanceAnchorMinor, balanceAnchorOn, setIncome, setBalanceAnchor } =
-    useProfile(uid)
+  const {
+    monthlyIncomeMinor,
+    balanceAnchorMinor,
+    balanceAnchorOn,
+    categoriesSeeded,
+    setIncome,
+    setBalanceAnchor,
+  } = useProfile(uid)
+
+  const {
+    active: categories,
+    createCategory,
+    renameCategory,
+    archiveCategory,
+    restoreCategory,
+  } = useCategories(uid, categoriesSeeded)
 
   /*
   A live value, not a snapshot taken at first render. `today` is now a memo
@@ -87,6 +107,7 @@ export default function App() {
     transactions,
     result,
     balance,
+    categories,
     today,
     createTrack,
     updateTrack,
@@ -96,6 +117,10 @@ export default function App() {
     softDelete,
     setIncome,
     setBalanceAnchor,
+    createCategory,
+    renameCategory,
+    archiveCategory,
+    restoreCategory,
   }
 
   return (

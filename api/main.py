@@ -173,6 +173,7 @@ ALLOWED_TOOLS = {
     "create_expense",
     "set_monthly_income",
     "set_bank_balance",
+    "create_category",
 }
 
 

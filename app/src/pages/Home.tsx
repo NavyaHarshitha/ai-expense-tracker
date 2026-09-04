@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useApp } from '../App'
 import { BalanceCard } from '../components/BalanceCard'
+import { CategoryManager } from '../components/CategoryManager'
 import { SafeToSpendCard } from '../components/SafeToSpendCard'
 import { TrackForm } from '../components/TrackForm'
 import { TrackList } from '../components/TrackList'
@@ -28,7 +29,22 @@ export function Home() {
     archiveTrack,
     setIncome,
     setBalanceAnchor,
+    categories,
+    createCategory,
+    renameCategory,
+    archiveCategory,
+    restoreCategory,
   } = useApp()
+
+  /* How many rows carry each category, so archiving and renaming are informed. */
+  const usageByName = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const t of transactions) {
+      if (t.deletedAt) continue
+      counts.set(t.categoryName, (counts.get(t.categoryName) ?? 0) + 1)
+    }
+    return counts
+  }, [transactions])
 
   const pad = (n: number) => String(n).padStart(2, '0')
   const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
@@ -125,6 +141,20 @@ export function Home() {
           <TrackList {...listProps} only={['goal', 'project']} />
         </section>
       )}
+
+      <section>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="m-0 text-[22px] font-bold text-ink">Categories</h2>
+        </div>
+        <CategoryManager
+          categories={categories}
+          usageByName={usageByName}
+          onCreate={(name) => createCategory(uid, name)}
+          onRename={(category, name) => renameCategory(uid, category, name)}
+          onArchive={(id) => archiveCategory(uid, id)}
+          onRestore={(id) => restoreCategory(uid, id)}
+        />
+      </section>
 
       <section ref={formRef}>
         <h2 className={sectionTitle}>{editing ? 'Edit track' : 'Add a track'}</h2>

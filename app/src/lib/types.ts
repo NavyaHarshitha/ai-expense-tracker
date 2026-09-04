@@ -86,6 +86,18 @@ export interface Transaction {
   deletedAt?: number | null
 }
 
+export interface Category {
+  id: string
+  name: string
+  /** Normalised name, used to detect duplicates before they are created. */
+  slug: string
+  /** Other spellings that should resolve here, so voice does not create twins. */
+  aliases?: string[]
+  archived: boolean
+  createdFrom: 'seed' | 'manual' | 'voice'
+  createdAt?: number
+}
+
 export interface Profile {
   monthlyIncomeMinor: number
 
@@ -100,6 +112,14 @@ export interface Profile {
   balanceAnchorMinor?: number
   /** YYYY-MM-DD - the date the anchor figure was true. */
   balanceAnchorOn?: string
+
+  /*
+  Set once, when the starter categories are created.
+
+  Without it, deliberately deleting every category would look identical to a
+  brand-new account and the defaults would silently reappear.
+  */
+  categoriesSeededAt?: number
 }
 
 export const TRACK_TYPE_LABELS: Record<TrackType, string> = {

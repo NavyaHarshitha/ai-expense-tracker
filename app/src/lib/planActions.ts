@@ -50,6 +50,10 @@ export type NormalisedAction =
       asOf?: string
     }
   | {
+      kind: 'create_category'
+      name: string
+    }
+  | {
       kind: 'create_expense'
       amountMinor: number
       description: string
@@ -162,6 +166,12 @@ export function normalise(
       return { kind: 'set_income', amountMinor }
     }
 
+    case 'create_category': {
+      const name = str(a.name)
+      if (!name) return null
+      return { kind: 'create_category', name }
+    }
+
     case 'set_bank_balance': {
       const amountMinor = minor(a.rupees)
       // A balance of zero is meaningful (an empty account), so only reject junk.
@@ -256,6 +266,9 @@ export function describe(action: NormalisedAction): string {
       return `Set bank balance to ${formatINR(action.amountMinor)}${
         action.asOf ? ` as of ${action.asOf}` : ''
       }`
+
+    case 'create_category':
+      return `Add category “${action.name}”`
 
     case 'create_expense':
       return `Record ${formatINR(action.amountMinor)} · ${action.description} · ${action.category}${

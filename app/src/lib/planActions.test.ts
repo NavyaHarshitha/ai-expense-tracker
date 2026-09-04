@@ -296,3 +296,25 @@ describe('the transcript tool never becomes an action', () => {
       .toBeNull()
   })
 })
+
+describe('create_category from voice', () => {
+  it('normalises a new category', () => {
+    expect(normalise({ tool: 'create_category', args: { name: 'Pets' } }, existing, TODAY))
+      .toMatchObject({ kind: 'create_category', name: 'Pets' })
+  })
+
+  it('rejects a nameless one rather than creating a blank category', () => {
+    expect(normalise({ tool: 'create_category', args: {} }, existing, TODAY)).toBeNull()
+    expect(normalise({ tool: 'create_category', args: { name: '  ' } }, existing, TODAY)).toBeNull()
+  })
+
+  it('is structural, so it always waits for an explicit Apply', () => {
+    const a = normalise({ tool: 'create_category', args: { name: 'Pets' } }, existing, TODAY)!
+    expect(isStructural(a)).toBe(true)
+  })
+
+  it('describes itself for the preview', () => {
+    const a = normalise({ tool: 'create_category', args: { name: 'Pets' } }, existing, TODAY)!
+    expect(describeAction(a)).toContain('Pets')
+  })
+})

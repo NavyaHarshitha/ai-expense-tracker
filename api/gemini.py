@@ -244,6 +244,13 @@ A stated current holding is never a target and never a monthly amount.
 
 "My account has 84 thousand" is the BANK balance - set_bank_balance - not a track.
 
+CATEGORIES. You are given the ones that exist. Use them. Only call
+create_category when the user explicitly asks ("add a category for pets") or
+when an expense truly fits none of them. Never create a variant of one that
+exists - not "Foods" beside "Food", not "Lunch" or "Dining" beside "Eating Out".
+A category list that grows a synonym every week makes every breakdown useless.
+If nothing fits and the user did not ask for a new one, use "Other".
+
 If the instruction records an expense and NO existing track suits it, also call
 create_track for a spending track to hold it - "Daily Expenses" is a reasonable
 default - and put that name in the expense's track_name. Every expense must come
@@ -365,6 +372,21 @@ TOOLS = [
                         "note": {"type": "STRING"},
                     },
                     "required": ["amount_rupees", "description"],
+                },
+            },
+            {
+                "name": "create_category",
+                "description": (
+                    "Create a NEW expense category. Only when the user explicitly asks for one, "
+                    "or when an expense genuinely fits none of the existing categories. Prefer an "
+                    "existing category almost always."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "name": {"type": "STRING", "description": "Short, singular, title case"},
+                    },
+                    "required": ["name"],
                 },
             },
             {

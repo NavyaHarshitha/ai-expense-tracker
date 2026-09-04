@@ -35,17 +35,17 @@ export function needsConfirmation(candidate: ParsedCandidate): boolean {
   )
 }
 
-const CATEGORIES = ['Food', 'Transport', 'Groceries', 'Shopping', 'Bills', 'Health', 'Other']
-
 export function ParsedCandidates({
   pending,
   tracks,
+  categories,
   onSave,
   onDiscard,
   onUndo,
 }: {
   pending: PendingCandidate[]
   tracks: Track[]
+  categories: string[]
   onSave: (key: string, edited: ParsedCandidate, trackId: string) => Promise<void>
   onDiscard: (key: string) => void
   onUndo: (key: string) => Promise<void>
@@ -68,6 +68,7 @@ export function ParsedCandidates({
             key={item.key}
             item={item}
             tracks={tracks}
+            categories={categories}
             onSave={onSave}
             onDiscard={onDiscard}
           />
@@ -116,11 +117,13 @@ function SavedRow({
 function ConfirmCard({
   item,
   tracks,
+  categories,
   onSave,
   onDiscard,
 }: {
   item: PendingCandidate
   tracks: Track[]
+  categories: string[]
   onSave: (key: string, edited: ParsedCandidate, trackId: string) => Promise<void>
   onDiscard: (key: string) => void
 }) {
@@ -181,7 +184,7 @@ function ConfirmCard({
         <label className="grid gap-1 text-sm font-bold text-ink-soft">
           Category
           <select className={field} value={category} onChange={(e) => setCategory(e.target.value)}>
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

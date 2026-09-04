@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react'
 import { collection, doc, writeBatch } from 'firebase/firestore'
 
+import { checkDuplicate, slugify } from '../lib/categories'
 import { db, userPath } from '../lib/firebase'
 import type { NormalisedAction } from '../lib/planActions'
-import type { Track, Transaction } from '../lib/types'
+import type { Category, Track, Transaction } from '../lib/types'
 
 /*
 Applies a confirmed plan.
@@ -26,6 +27,7 @@ export interface ApplyResult {
   tracksUpdated: number
   incomeSet: boolean
   balanceSet: boolean
+  categoriesCreated: number
   expenseIds: string[]
 }
 
@@ -38,6 +40,7 @@ function todayIso(): string {
 export function usePlanExecutor(
   uid: string,
   tracks: Track[],
+  categories: Category[],
   /** Already bound to the signed-in user by the caller - takes the txn alone. */
   createTransaction: (txn: Omit<Transaction, 'id'>) => Promise<string>,
 ) {
@@ -56,6 +59,7 @@ export function usePlanExecutor(
         tracksUpdated: 0,
         incomeSet: false,
           balanceSet: false,
+          categoriesCreated: 0,
         expenseIds: [],
       }
 
@@ -151,6 +155,26 @@ export function usePlanExecutor(
               { merge: true },
             )
             result.incomeSet = true
+          }
+
+          if (action.kind === 'create_category') {
+            /*
+            Last line of defence against sprawl. The planner is told to prefer
+            existing categories and the preview shows what it intends, but a
+            duplicate reaching the collection is permanent noise in every
+            breakdown - so it is checked again here, at the write.
+            */
+            const { exact } = checkDuplicate(action.name, categories)
+            if (!exact) {
+              batch.set(doc(collection(db, userPath(uid, 'categories'))), {
+                name: action.name,
+                slug: slugify(action.name),
+                archived: false,
+                createdFrom: 'voice',
+                createdAt: Date.now(),
+              })
+              result.categoriesCreated += 1
+            }
           }
 
           if (action.kind === 'set_balance') {

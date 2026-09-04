@@ -26,6 +26,8 @@ as utilities instead of hand-written classes.
   --color-line-strong: #d1d5db;
 
   --color-danger: #dc2626;
+  /* A caution that is not an error - near-duplicate names, burn-rate notices. */
+  --color-warn: #a16207;
   --color-good: #047857;
 
   --font-sans: Arial, Helvetica, sans-serif;

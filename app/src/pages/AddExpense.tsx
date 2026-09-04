@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { useApp } from '../App'
 import { QuickAdd } from '../components/QuickAdd'
 import { TransactionList } from '../components/TransactionList'
+import { categoryNames } from '../lib/categories'
 import { formatINR } from '../lib/money'
 import { isInMonth } from '../lib/safeToSpend'
 import type { Transaction } from '../lib/types'
@@ -12,8 +13,19 @@ Entry and the ledger, together. You add something and see it appear in the list
 immediately below - which is the fastest way to notice a mistake.
 */
 export function AddExpense() {
-  const { uid, tracks, transactions, today, createTransaction, updateTransaction, softDelete } =
-    useApp()
+  const {
+    uid,
+    tracks,
+    transactions,
+    categories,
+    today,
+    createTransaction,
+    updateTransaction,
+    softDelete,
+  } = useApp()
+
+  // Names only, ordered for a dropdown - the components never need the docs.
+  const categoryNameList = useMemo(() => categoryNames(categories), [categories])
 
   const [editing, setEditing] = useState<Transaction | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
@@ -55,6 +67,8 @@ export function AddExpense() {
         <QuickAdd
           uid={uid}
           tracks={tracks}
+          categories={categoryNameList}
+          categoryDocs={categories}
           today={today}
           editing={editing}
           onAdd={(txn) => createTransaction(uid, txn)}

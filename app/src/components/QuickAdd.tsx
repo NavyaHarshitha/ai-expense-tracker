@@ -14,12 +14,11 @@ import {
   PAYMENT_METHOD_LABELS,
   type Movement,
   type PaymentMethod,
+  type Category,
   type Track,
   type Transaction,
 } from '../lib/types'
 import { cardPadded, field, fieldLabel, linkButton, primaryButton, sectionTitle } from '../lib/ui'
-
-const CATEGORIES = ['Food', 'Transport', 'Groceries', 'Shopping', 'Bills', 'Health', 'Other']
 
 function todayIso() {
   // Local date, not UTC - an expense at 1am IST belongs to today, not yesterday.
@@ -40,6 +39,8 @@ Defaults make the common case three fields: amount, what it was, which track.
 export function QuickAdd({
   uid,
   tracks,
+  categories,
+  categoryDocs,
   today,
   editing,
   onAdd,
@@ -49,6 +50,8 @@ export function QuickAdd({
 }: {
   uid: string
   tracks: Track[]
+  categories: string[]
+  categoryDocs: Category[]
   today: Date
   editing?: Transaction | null
   onAdd: (txn: Omit<Transaction, 'id'>) => Promise<string>
@@ -58,7 +61,7 @@ export function QuickAdd({
 }) {
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
-  const [categoryName, setCategoryName] = useState('Food')
+  const [categoryName, setCategoryName] = useState(categories[0] ?? 'Other')
   const [trackId, setTrackId] = useState('')
   const [movement, setMovement] = useState<Movement>('expense')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi')
@@ -78,7 +81,7 @@ export function QuickAdd({
   function reset() {
     setAmount('')
     setDescription('')
-    setCategoryName('Food')
+    setCategoryName(categories[0] ?? 'Other')
     setTrackId('')
     setMovement('expense')
     setPaymentMethod('upi')
@@ -152,7 +155,7 @@ export function QuickAdd({
   const [replanning, setReplanning] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
 
-  const executor = usePlanExecutor(uid, tracks, onAdd)
+  const executor = usePlanExecutor(uid, tracks, categoryDocs, onAdd)
 
   /** Write one expense through the SAME path the form uses - no second way in. */
   const commit = useCallback(
@@ -196,7 +199,7 @@ export function QuickAdd({
       const result = await planActions({
         ...input,
         existingTracks: tracks.map((t) => ({ name: t.name, type: t.type })),
-        categories: CATEGORIES,
+        categories,
       })
 
       // Shown even when nothing is actionable - that is exactly when knowing
@@ -372,6 +375,7 @@ export function QuickAdd({
           <ParsedCandidates
             pending={pending}
             tracks={tracks}
+            categories={categories}
             onSave={saveCandidate}
             onDiscard={discardCandidate}
             onUndo={undoCandidate}
@@ -464,7 +468,7 @@ export function QuickAdd({
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
             >
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
