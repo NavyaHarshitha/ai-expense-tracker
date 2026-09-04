@@ -1,12 +1,28 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 
 import App from './App.tsx'
-import { AddExpense } from './pages/AddExpense.tsx'
-import { Dashboard } from './pages/Dashboard.tsx'
 import { Home } from './pages/Home.tsx'
 import './index.css'
+
+/*
+Home loads eagerly - it is the landing route. The other two are lazy.
+
+Dashboard alone pulls in Recharts, which was the bulk of a 1.29 MB initial
+bundle; charts should not be downloaded by someone who only wants to log a
+lunch. Add Expense is split for the same reason.
+*/
+const AddExpense = lazy(() =>
+  import('./pages/AddExpense.tsx').then((m) => ({ default: m.AddExpense })),
+)
+const Dashboard = lazy(() =>
+  import('./pages/Dashboard.tsx').then((m) => ({ default: m.Dashboard })),
+)
+
+function Loading() {
+  return <div className="py-16 text-center text-muted">Loading…</div>
+}
 
 /*
 Three pages, mirroring the original vanilla app: Home, Add Expense, Dashboard.
@@ -19,8 +35,22 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'add', element: <AddExpense /> },
-      { path: 'dashboard', element: <Dashboard /> },
+      {
+        path: 'add',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <AddExpense />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <Dashboard />
+          </Suspense>
+        ),
+      },
     ],
   },
 ])

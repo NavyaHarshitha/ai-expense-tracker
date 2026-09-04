@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 
 import { useApp } from '../App'
+import { useMonthlyInsight } from '../hooks/useMonthlyInsight'
 import { formatINR } from '../lib/money'
 import {
   buildInsights,
@@ -29,7 +30,7 @@ const TONE_STYLES: Record<InsightTone, { border: string; label: string; text: st
 }
 
 export function Dashboard() {
-  const { tracks, transactions, result, today } = useApp()
+  const { uid, tracks, transactions, result, today } = useApp()
 
   const summary = useMemo(() => monthSummary(transactions, today), [transactions, today])
   const breakdown = useMemo(() => categoryBreakdown(transactions, today), [transactions, today])
@@ -48,6 +49,14 @@ export function Dashboard() {
   )
 
   const monthName = today.toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+
+  const written = useMonthlyInsight({
+    uid,
+    today,
+    result,
+    transactions,
+    enabled: transactions.length > 0,
+  })
 
   if (transactions.length === 0) {
     return (
@@ -172,6 +181,62 @@ export function Dashboard() {
           <span className={eyebrow}>Computed from your ledger</span>
         </div>
 
+        {/*
+        The written review sits above the rule-based cards, and the cards stay -
+        they are the evidence it refers to. If the narrative and the cards
+        disagree, the model invented a number and the prompt is wrong.
+        */}
+        {(written.insight || written.loading || written.error) && (
+          <div className={`${card} mb-4 border-l-4 border-l-primary p-6`}>
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
+              <span className={eyebrow}>Written by Gemini</span>
+              {written.insight && (
+                <button
+                  type="button"
+                  onClick={written.regenerate}
+                  disabled={written.loading}
+                  className="rounded-full px-3 py-1 text-sm font-bold text-muted transition hover:bg-primary-soft hover:text-primary-dark disabled:opacity-50"
+                >
+                  {written.loading ? 'Writing…' : written.stale ? 'Numbers moved — refresh' : 'Refresh'}
+                </button>
+              )}
+            </div>
+
+            {written.loading && !written.insight && (
+              <p className="m-0 text-muted">Reading your month…</p>
+            )}
+
+            {written.error && !written.insight && (
+              <p className="m-0 text-sm text-danger">{written.error}</p>
+            )}
+
+            {written.insight && (
+              <>
+                <p className="m-0 text-xl font-bold text-ink">{written.insight.headline}</p>
+                <p className="mt-2 mb-0 text-ink-soft">{written.insight.body}</p>
+
+                {written.insight.actions.length > 0 && (
+                  <ul className="m-0 mt-4 grid list-none gap-2 p-0">
+                    {written.insight.actions.map((a, i) => (
+                      <li key={i} className="flex gap-3 text-ink-soft">
+                        <span className="font-extrabold text-primary-dark" aria-hidden="true">
+                          {i + 1}
+                        </span>
+                        <span>{a}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <p className="mt-4 mb-0 text-sm text-muted">
+                  Written from the figures below, never calculated by the model &mdash; if a
+                  number here disagrees with a card, trust the card.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         <ul className="m-0 grid list-none gap-3 p-0">
           {insights.map((insight) => {
             const tone = TONE_STYLES[insight.tone]
@@ -188,9 +253,8 @@ export function Dashboard() {
         </ul>
 
         <p className="mt-4 text-sm text-muted">
-          These are rule-based, derived directly from your transactions. The Gemini-written monthly
-          narrative &mdash; and asking questions in your own words &mdash; arrives with the
-          assistant.
+          The cards above are rule-based, derived directly from your transactions. Asking
+          questions in your own words is still to come.
         </p>
       </section>
     </div>
