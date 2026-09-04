@@ -214,3 +214,76 @@ describe('date-window validation (adversarial-review regression)', () => {
     expect(expenseOn('')).toMatchObject({ occurredOn: undefined })
   })
 })
+
+describe('opening balance and bank balance from voice', () => {
+  it('reads "I have 60k in mutual funds" as an opening balance, not a target', () => {
+    const a = normalise(
+      {
+        tool: 'create_track',
+        args: { name: 'Mutual Funds', type: 'goal', opening_balance_rupees: 60000 },
+      },
+      existing,
+      TODAY,
+    )
+    expect(a).toMatchObject({ kind: 'create_track', openingMinor: toPaise(60000) })
+    // Crucially NOT the target - those mean different things.
+    expect((a as { amountMinor?: number }).amountMinor).toBeUndefined()
+  })
+
+  it('keeps a holding and a target apart when both are stated', () => {
+    const a = normalise(
+      {
+        tool: 'create_track',
+        args: {
+          name: 'Mutual Funds', type: 'goal',
+          opening_balance_rupees: 60000, amount_rupees: 300000, per_month_rupees: 15000,
+        },
+      },
+      existing,
+      TODAY,
+    )
+    expect(a).toMatchObject({
+      openingMinor: toPaise(60000),
+      amountMinor: toPaise(300000),
+      perMonthMinor: toPaise(15000),
+    })
+  })
+
+  it('sets a bank balance, defaulting the date to undefined so the caller uses today', () => {
+    expect(normalise({ tool: 'set_bank_balance', args: { rupees: 84000 } }, existing, TODAY))
+      .toMatchObject({ kind: 'set_balance', amountMinor: toPaise(84000), asOf: undefined })
+  })
+
+  it('accepts a zero balance - an empty account is a real state', () => {
+    expect(normalise({ tool: 'set_bank_balance', args: { rupees: 0 } }, existing, TODAY))
+      .toMatchObject({ kind: 'set_balance', amountMinor: 0 })
+  })
+
+  it('rejects a junk balance rather than writing nonsense', () => {
+    expect(normalise({ tool: 'set_bank_balance', args: {} }, existing, TODAY)).toBeNull()
+    expect(normalise({ tool: 'set_bank_balance', args: { rupees: 'lots' } }, existing, TODAY)).toBeNull()
+  })
+
+  it('ignores an out-of-range as_of date instead of anchoring to it', () => {
+    // Anchoring to a wrong date silently discards everything logged before it.
+    expect(normalise({ tool: 'set_bank_balance', args: { rupees: 84000, as_of: '2020-01-01' } }, existing, TODAY))
+      .toMatchObject({ asOf: undefined })
+  })
+
+  it('describes both in words a person can check before applying', () => {
+    const bal = normalise({ tool: 'set_bank_balance', args: { rupees: 84000 } }, existing, TODAY)!
+    expect(describeAction(bal)).toContain('84,000')
+
+    const mf = normalise(
+      { tool: 'create_track', args: { name: 'Mutual Funds', type: 'goal', opening_balance_rupees: 60000 } },
+      existing,
+      TODAY,
+    )!
+    expect(describeAction(mf)).toContain('already saved')
+  })
+
+  it('treats set_balance as structural, so it always waits for an explicit Apply', () => {
+    const bal = normalise({ tool: 'set_bank_balance', args: { rupees: 84000 } }, existing, TODAY)!
+    expect(isStructural(bal)).toBe(true)
+  })
+})

@@ -1,3 +1,4 @@
+import { trackHoldingMinor } from '../lib/balance'
 import { formatINR } from '../lib/money'
 import { isInMonth } from '../lib/safeToSpend'
 import { TRACK_TYPE_LABELS, type Track, type TrackType, type Transaction } from '../lib/types'
@@ -33,14 +34,24 @@ function progressFor(track: Track, transactions: Transaction[], today: Date) {
         caption: paid >= due && due > 0 ? 'paid this month' : `due on the ${track.dueDay ?? '-'}`,
       }
     }
-    case 'goal':
-      return { used: netOf(mine), total: track.targetMinor ?? 0, caption: 'saved so far' }
-    case 'project':
+    case 'goal': {
+      // Opening balance included, so money held before tracking began counts.
+      const held = trackHoldingMinor(track, transactions)
+      const opening = track.openingBalanceMinor ?? 0
       return {
-        used: netOf(mine),
+        used: held,
+        total: track.targetMinor ?? 0,
+        caption: opening > 0 ? `includes ${formatINR(opening)} you already had` : 'saved so far',
+      }
+    }
+    case 'project': {
+      const held = trackHoldingMinor(track, transactions)
+      return {
+        used: held,
         total: track.budgetMinor ?? track.targetMinor ?? 0,
         caption: track.phase === 'active' ? 'spending down' : 'building the fund',
       }
+    }
   }
 }
 
@@ -75,7 +86,18 @@ export function TrackList({
   return (
     <>
       {types.map((type) => {
-        const group = tracks.filter((t) => t.type === type)
+        /*
+        Commitments read as a calendar, so they are ordered by the day they fall
+        due rather than by creation order - which is what you actually want to
+        scan when working out what is still coming this month.
+        */
+        const group = tracks
+          .filter((t) => t.type === type)
+          .sort((a, b) =>
+            type === 'commitment'
+              ? (a.dueDay ?? 32) - (b.dueDay ?? 32) || a.name.localeCompare(b.name)
+              : a.name.localeCompare(b.name),
+          )
         if (group.length === 0) return null
 
         return (

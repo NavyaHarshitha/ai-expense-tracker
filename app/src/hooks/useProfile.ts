@@ -6,6 +6,8 @@ import { db, userPath } from '../lib/firebase'
 /** Monthly income is the starting point for Safe-to-Spend, so it lives in one place. */
 export function useProfile(uid: string | undefined) {
   const [monthlyIncomeMinor, setMonthlyIncomeMinor] = useState(0)
+  const [balanceAnchorMinor, setBalanceAnchorMinor] = useState<number | undefined>(undefined)
+  const [balanceAnchorOn, setBalanceAnchorOn] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -17,7 +19,11 @@ export function useProfile(uid: string | undefined) {
     return onSnapshot(
       doc(db, userPath(uid, 'settings'), 'profile'),
       (snap) => {
-        setMonthlyIncomeMinor(snap.data()?.monthlyIncomeMinor ?? 0)
+        const data = snap.data()
+        setMonthlyIncomeMinor(data?.monthlyIncomeMinor ?? 0)
+        // undefined, not 0 - "never set" and "genuinely zero" are different states.
+        setBalanceAnchorMinor(data?.balanceAnchorMinor ?? undefined)
+        setBalanceAnchorOn(data?.balanceAnchorOn ?? undefined)
         setLoading(false)
       },
       () => setLoading(false),
@@ -32,5 +38,26 @@ export function useProfile(uid: string | undefined) {
     )
   }
 
-  return { monthlyIncomeMinor, loading, setIncome }
+  /**
+   * Re-anchor the balance to a figure you have just read off your bank, as of a date.
+   *
+   * This is reconciliation: everything before the date is forgotten and the
+   * running total restarts from the asserted figure.
+   */
+  async function setBalanceAnchor(uid: string, minor: number, on: string) {
+    await setDoc(
+      doc(db, userPath(uid, 'settings'), 'profile'),
+      { balanceAnchorMinor: minor, balanceAnchorOn: on },
+      { merge: true },
+    )
+  }
+
+  return {
+    monthlyIncomeMinor,
+    balanceAnchorMinor,
+    balanceAnchorOn,
+    loading,
+    setIncome,
+    setBalanceAnchor,
+  }
 }

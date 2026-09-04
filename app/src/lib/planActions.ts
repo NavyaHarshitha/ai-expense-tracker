@@ -26,6 +26,7 @@ export type NormalisedAction =
       amountMinor?: number
       dueDay?: number
       perMonthMinor?: number
+      openingMinor?: number
       locked?: boolean
     }
   | {
@@ -36,11 +37,17 @@ export type NormalisedAction =
       amountMinor?: number
       dueDay?: number
       perMonthMinor?: number
+      openingMinor?: number
       locked?: boolean
     }
   | {
       kind: 'set_income'
       amountMinor: number
+    }
+  | {
+      kind: 'set_balance'
+      amountMinor: number
+      asOf?: string
     }
   | {
       kind: 'create_expense'
@@ -119,6 +126,7 @@ export function normalise(
 
       return {
         kind: 'create_track',
+        openingMinor: minor(a.opening_balance_rupees),
         name,
         type,
         amountMinor: minor(a.amount_rupees),
@@ -137,6 +145,7 @@ export function normalise(
 
       return {
         kind: 'update_track',
+        openingMinor: minor(a.opening_balance_rupees),
         trackId: match.id,
         trackName: match.name,
         newName: str(a.new_name) || undefined,
@@ -151,6 +160,17 @@ export function normalise(
       const amountMinor = minor(a.rupees)
       if (!amountMinor || amountMinor <= 0) return null
       return { kind: 'set_income', amountMinor }
+    }
+
+    case 'set_bank_balance': {
+      const amountMinor = minor(a.rupees)
+      // A balance of zero is meaningful (an empty account), so only reject junk.
+      if (amountMinor === undefined) return null
+      return {
+        kind: 'set_balance',
+        amountMinor,
+        asOf: validDate(a.as_of, today) ? (a.as_of as string) : undefined,
+      }
     }
 
     case 'create_expense': {
@@ -211,6 +231,7 @@ export function describe(action: NormalisedAction): string {
         bits.push(`${label} ${formatINR(action.amountMinor)}`)
       }
       if (action.dueDay) bits.push(`on the ${ordinal(action.dueDay)}`)
+      if (action.openingMinor) bits.push(`${formatINR(action.openingMinor)} already saved`)
       if (action.perMonthMinor) bits.push(`${formatINR(action.perMonthMinor)}/month`)
       if (action.locked) bits.push('locked from spending advice')
 
@@ -222,6 +243,7 @@ export function describe(action: NormalisedAction): string {
       if (action.newName) bits.push(`rename to “${action.newName}”`)
       if (action.amountMinor !== undefined) bits.push(`amount ${formatINR(action.amountMinor)}`)
       if (action.dueDay) bits.push(`due on the ${ordinal(action.dueDay)}`)
+      if (action.openingMinor !== undefined) bits.push(`${formatINR(action.openingMinor)} already saved`)
       if (action.perMonthMinor !== undefined) bits.push(`${formatINR(action.perMonthMinor)}/month`)
       if (action.locked !== undefined) bits.push(action.locked ? 'lock it' : 'unlock it')
       return bits.join(' · ')
@@ -229,6 +251,11 @@ export function describe(action: NormalisedAction): string {
 
     case 'set_income':
       return `Set monthly income to ${formatINR(action.amountMinor)}`
+
+    case 'set_balance':
+      return `Set bank balance to ${formatINR(action.amountMinor)}${
+        action.asOf ? ` as of ${action.asOf}` : ''
+      }`
 
     case 'create_expense':
       return `Record ${formatINR(action.amountMinor)} · ${action.description} · ${action.category}${

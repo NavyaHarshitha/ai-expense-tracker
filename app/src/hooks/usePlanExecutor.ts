@@ -25,6 +25,7 @@ export interface ApplyResult {
   tracksCreated: number
   tracksUpdated: number
   incomeSet: boolean
+  balanceSet: boolean
   expenseIds: string[]
 }
 
@@ -54,6 +55,7 @@ export function usePlanExecutor(
         tracksCreated: 0,
         tracksUpdated: 0,
         incomeSet: false,
+          balanceSet: false,
         expenseIds: [],
       }
 
@@ -91,6 +93,9 @@ export function usePlanExecutor(
                     ...(action.perMonthMinor !== undefined
                       ? { plannedMonthlyMinor: action.perMonthMinor }
                       : {}),
+                    ...(action.openingMinor !== undefined
+                      ? { openingBalanceMinor: action.openingMinor }
+                      : {}),
                     ...(action.locked ? { raidable: false } : {}),
                   }
                 : {}),
@@ -100,6 +105,9 @@ export function usePlanExecutor(
                     phase: 'accumulating',
                     ...(action.perMonthMinor !== undefined
                       ? { plannedMonthlyMinor: action.perMonthMinor }
+                      : {}),
+                    ...(action.openingMinor !== undefined
+                      ? { openingBalanceMinor: action.openingMinor }
                       : {}),
                   }
                 : {}),
@@ -113,6 +121,7 @@ export function usePlanExecutor(
             if (action.newName) patch.name = action.newName
             if (action.dueDay !== undefined) patch.dueDay = action.dueDay
             if (action.perMonthMinor !== undefined) patch.plannedMonthlyMinor = action.perMonthMinor
+            if (action.openingMinor !== undefined) patch.openingBalanceMinor = action.openingMinor
             if (action.locked !== undefined) patch.raidable = !action.locked
 
             if (action.amountMinor !== undefined) {
@@ -142,6 +151,23 @@ export function usePlanExecutor(
               { merge: true },
             )
             result.incomeSet = true
+          }
+
+          if (action.kind === 'set_balance') {
+            /*
+            Anchoring to a date the user did not state would silently discard
+            everything logged before it, so an unstated date means today - which
+            is also the only date they could be reading a balance off right now.
+            */
+            batch.set(
+              doc(db, userPath(uid, 'settings'), 'profile'),
+              {
+                balanceAnchorMinor: action.amountMinor,
+                balanceAnchorOn: action.asOf ?? todayIso(),
+              },
+              { merge: true },
+            )
+            result.balanceSet = true
           }
         }
 

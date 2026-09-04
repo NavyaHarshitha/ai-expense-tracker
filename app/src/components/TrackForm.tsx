@@ -46,6 +46,7 @@ export function TrackForm({
   const [amount, setAmount] = useState('')
   const [dueDay, setDueDay] = useState('1')
   const [planned, setPlanned] = useState('')
+  const [opening, setOpening] = useState('')
   const [raidable, setRaidable] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -55,6 +56,7 @@ export function TrackForm({
     setAmount('')
     setDueDay('1')
     setPlanned('')
+    setOpening('')
     setRaidable(true)
   }
 
@@ -66,6 +68,7 @@ export function TrackForm({
     setAmount(amountOf(editing) ? String(amountOf(editing) / 100) : '')
     setDueDay(String(editing.dueDay ?? 1))
     setPlanned(editing.plannedMonthlyMinor ? String(editing.plannedMonthlyMinor / 100) : '')
+    setOpening(editing.openingBalanceMinor ? String(editing.openingBalanceMinor / 100) : '')
     setRaidable(editing.raidable !== false)
   }, [editing])
 
@@ -83,6 +86,7 @@ export function TrackForm({
       monthlyLimitMinor: null as unknown as undefined,
       commitmentAmountMinor: null as unknown as undefined,
       dueDay: null as unknown as undefined,
+      openingBalanceMinor: null as unknown as undefined,
       targetMinor: null as unknown as undefined,
       plannedMonthlyMinor: null as unknown as undefined,
       raidable: null as unknown as undefined,
@@ -98,11 +102,13 @@ export function TrackForm({
     if (type === 'goal') {
       base.targetMinor = toPaise(amount)
       base.plannedMonthlyMinor = toPaise(planned)
+      base.openingBalanceMinor = toPaise(opening)
       base.raidable = raidable
     }
     if (type === 'project') {
       base.budgetMinor = toPaise(amount)
       base.plannedMonthlyMinor = toPaise(planned)
+      base.openingBalanceMinor = toPaise(opening)
       base.phase = editing?.phase ?? 'accumulating'
     }
 
@@ -254,6 +260,27 @@ export function TrackForm({
             </div>
           )}
         </div>
+
+        {(type === 'goal' || type === 'project') && (
+          <div>
+            <label className={fieldLabel} htmlFor="track-opening">
+              Already saved
+            </label>
+            <input
+              id="track-opening"
+              className={`${field} tnum`}
+              type="number"
+              min="0"
+              value={opening}
+              onChange={(e) => setOpening(e.target.value)}
+              placeholder="60000"
+            />
+            <p className="mt-1 mb-0 text-sm text-muted">
+              Money already in this pot. Counts toward the target without inventing a
+              transaction that never happened.
+            </p>
+          </div>
+        )}
 
         {type === 'goal' && (
           <label className="flex items-center gap-2 text-sm text-muted">

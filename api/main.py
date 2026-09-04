@@ -165,7 +165,13 @@ async def parse(req: ParseRequest, uid: str = Depends(require_user)):
     return ParseResponse(candidates=candidates, model=MODEL)
 
 
-ALLOWED_TOOLS = {"create_track", "update_track", "create_expense", "set_monthly_income"}
+ALLOWED_TOOLS = {
+    "create_track",
+    "update_track",
+    "create_expense",
+    "set_monthly_income",
+    "set_bank_balance",
+}
 
 
 @app.post("/plan", response_model=PlanResponse)

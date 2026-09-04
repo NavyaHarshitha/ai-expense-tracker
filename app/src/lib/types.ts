@@ -36,6 +36,15 @@ export interface Track {
   commitmentAmountMinor?: number
   dueDay?: number
 
+  /**
+   * Money already in this track before tracking began.
+   *
+   * Without it there is nowhere to record what you already hold: an existing
+   * Rs 60,000 of mutual funds would have to be faked as a transfer that never
+   * happened, stating a fact about the past by polluting the ledger.
+   */
+  openingBalanceMinor?: number
+
   /** goal: target to accumulate toward */
   targetMinor?: number
   plannedMonthlyMinor?: number
@@ -79,6 +88,18 @@ export interface Transaction {
 
 export interface Profile {
   monthlyIncomeMinor: number
+
+  /*
+  Bank balance is stored as an ANCHOR plus a date, not as a running total.
+
+  The app cannot see the bank. If it kept a single balance figure and adjusted
+  it, one missed expense would leave it permanently wrong with no way back
+  except arithmetic. An anchor lets you say "my actual balance today is X" and
+  re-base from there - which is reconciliation, and it is the honest primitive.
+  */
+  balanceAnchorMinor?: number
+  /** YYYY-MM-DD - the date the anchor figure was true. */
+  balanceAnchorOn?: string
 }
 
 export const TRACK_TYPE_LABELS: Record<TrackType, string> = {

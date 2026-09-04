@@ -7,6 +7,7 @@ import { useProfile } from './hooks/useProfile'
 import { useTracks } from './hooks/useTracks'
 import { useToday } from './hooks/useToday'
 import { useTransactions } from './hooks/useTransactions'
+import { computeBalance, type BalanceResult } from './lib/balance'
 import { computeSafeToSpend, type SafeToSpendResult } from './lib/safeToSpend'
 import { linkButton } from './lib/ui'
 import type { Track, Transaction } from './lib/types'
@@ -16,6 +17,7 @@ export interface AppContext {
   tracks: Track[]
   transactions: Transaction[]
   result: SafeToSpendResult
+  balance: BalanceResult
   today: Date
   createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
@@ -24,6 +26,7 @@ export interface AppContext {
   updateTransaction: (uid: string, id: string, patch: Partial<Transaction>) => Promise<void>
   softDelete: (uid: string, id: string) => Promise<void>
   setIncome: (uid: string, minor: number) => Promise<void>
+  setBalanceAnchor: (uid: string, minor: number, on: string) => Promise<void>
 }
 
 /** Typed accessor so pages don't repeat the generic. */
@@ -43,7 +46,8 @@ export default function App() {
 
   const { active: tracks, createTrack, updateTrack, archiveTrack } = useTracks(uid)
   const { transactions, createTransaction, updateTransaction, softDelete } = useTransactions(uid)
-  const { monthlyIncomeMinor, setIncome } = useProfile(uid)
+  const { monthlyIncomeMinor, balanceAnchorMinor, balanceAnchorOn, setIncome, setBalanceAnchor } =
+    useProfile(uid)
 
   /*
   A live value, not a snapshot taken at first render. `today` is now a memo
@@ -51,6 +55,17 @@ export default function App() {
   no Firestore change arrives.
   */
   const today = useToday()
+
+  const balance = useMemo(
+    () =>
+      computeBalance({
+        anchorMinor: balanceAnchorMinor,
+        anchorOn: balanceAnchorOn,
+        transactions,
+        tracks,
+      }),
+    [balanceAnchorMinor, balanceAnchorOn, transactions, tracks],
+  )
 
   // Recomputed whenever Firestore pushes a change, or the day turns over.
   const result = useMemo(
@@ -71,6 +86,7 @@ export default function App() {
     tracks,
     transactions,
     result,
+    balance,
     today,
     createTrack,
     updateTrack,
@@ -79,6 +95,7 @@ export default function App() {
     updateTransaction,
     softDelete,
     setIncome,
+    setBalanceAnchor,
   }
 
   return (

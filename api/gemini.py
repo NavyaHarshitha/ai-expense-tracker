@@ -230,6 +230,15 @@ Amount rules:
 If the instruction names an EXISTING track, call update_track rather than
 creating a duplicate. The existing tracks are given to you.
 
+Distinguish these three carefully, because they are easy to confuse:
+- "I have 60k in mutual funds"       -> opening_balance_rupees on a GOAL track
+- "I want to reach 3 lakh"           -> amount_rupees (the target)
+- "I put 15k in every month"         -> per_month_rupees, or a commitment if it
+                                        leaves on a fixed date
+A stated current holding is never a target and never a monthly amount.
+
+"My account has 84 thousand" is the BANK balance - set_bank_balance - not a track.
+
 If the instruction records an expense and NO existing track suits it, also call
 create_track for a spending track to hold it - "Daily Expenses" is a reasonable
 default - and put that name in the expense's track_name. Every expense must come
@@ -270,6 +279,14 @@ TOOLS = [
                             "type": "NUMBER",
                             "description": "Amount set aside each month. Goals and projects only.",
                         },
+                        "opening_balance_rupees": {
+                            "type": "NUMBER",
+                            "description": (
+                                "Money ALREADY in this pot before tracking started. "
+                                "\"I have mutual funds of 60k\" is an opening balance of 60000, "
+                                "not a target and not a monthly amount."
+                            ),
+                        },
                         "locked": {
                             "type": "BOOLEAN",
                             "description": (
@@ -292,6 +309,7 @@ TOOLS = [
                         "amount_rupees": {"type": "NUMBER"},
                         "due_day": {"type": "INTEGER"},
                         "per_month_rupees": {"type": "NUMBER"},
+                        "opening_balance_rupees": {"type": "NUMBER"},
                         "locked": {"type": "BOOLEAN"},
                     },
                     "required": ["track_name"],
@@ -322,6 +340,21 @@ TOOLS = [
                         "note": {"type": "STRING"},
                     },
                     "required": ["amount_rupees", "description"],
+                },
+            },
+            {
+                "name": "set_bank_balance",
+                "description": (
+                    "Record what the user's bank account actually holds right now. Use when "
+                    "they state a current balance: \"my account has 84 thousand\"."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "rupees": {"type": "NUMBER"},
+                        "as_of": {"type": "STRING", "description": "ISO YYYY-MM-DD. Today if unstated."},
+                    },
+                    "required": ["rupees"],
                 },
             },
             {

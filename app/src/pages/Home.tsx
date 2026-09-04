@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useApp } from '../App'
+import { BalanceCard } from '../components/BalanceCard'
 import { SafeToSpendCard } from '../components/SafeToSpendCard'
 import { TrackForm } from '../components/TrackForm'
 import { TrackList } from '../components/TrackList'
@@ -15,8 +16,22 @@ Home answers "where do I stand?" - income, what's already committed, and how the
 tracks are doing. Adding expenses lives on its own page; analysis on Dashboard.
 */
 export function Home() {
-  const { uid, tracks, transactions, result, today, createTrack, updateTrack, archiveTrack, setIncome } =
-    useApp()
+  const {
+    uid,
+    tracks,
+    transactions,
+    result,
+    balance,
+    today,
+    createTrack,
+    updateTrack,
+    archiveTrack,
+    setIncome,
+    setBalanceAnchor,
+  } = useApp()
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
 
   const [seeding, setSeeding] = useState(false)
   const [editing, setEditing] = useState<Track | null>(null)
@@ -52,6 +67,12 @@ export function Home() {
   return (
     <div className="grid gap-8">
       <SafeToSpendCard result={result} onIncomeChange={(minor) => setIncome(uid, minor)} />
+
+      <BalanceCard
+        balance={balance}
+        todayIso={todayIso}
+        onAnchor={(minor, on) => setBalanceAnchor(uid, minor, on)}
+      />
 
       {transactions.length === 0 && tracks.length === 0 && (
         <section className={`${card} p-6 text-center`}>
