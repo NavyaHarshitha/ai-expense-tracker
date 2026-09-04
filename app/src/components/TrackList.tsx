@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { trackHoldingMinor } from '../lib/balance'
 import { formatINR } from '../lib/money'
 import { isInMonth } from '../lib/safeToSpend'
@@ -5,6 +7,72 @@ import { TRACK_TYPE_LABELS, type Track, type TrackType, type Transaction } from 
 import { card } from '../lib/ui'
 
 const ORDER: TrackType[] = ['spending', 'commitment', 'goal', 'project']
+
+const iconButton =
+  'inline-flex h-6 w-7 shrink-0 items-center justify-center rounded border border-line-strong bg-surface text-muted transition hover:border-ink hover:text-ink'
+
+/*
+Remove, with a two-step confirm and the right verb for the situation.
+
+A track nothing references is deleted outright - it was a mistake, and archiving
+mistakes just fills the archive. A track with history is archived instead: its
+transactions point at this id, and deleting it would leave the ledger showing
+"Unassigned" rows with no explanation of why.
+*/
+function RemoveTrackButton({
+  track,
+  usedBy,
+  onRemove,
+}: {
+  track: Track
+  usedBy: number
+  onRemove: (track: Track, hasHistory: boolean) => Promise<void>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const hasHistory = usedBy > 0
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        aria-label={`${hasHistory ? 'Archive' : 'Delete'} ${track.name}`}
+        title={hasHistory ? 'Archive track' : 'Delete track'}
+        className={iconButton}
+      >
+        <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z" />
+          <path d="M6 9h12l-1 11H7L6 9Zm4 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z" />
+        </svg>
+      </button>
+    )
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          await onRemove(track, hasHistory)
+        }}
+        className="rounded border border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-red-50 disabled:opacity-50"
+      >
+        {busy ? '…' : hasHistory ? 'Archive' : 'Delete'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setConfirming(false)}
+        className="rounded px-2 py-0.5 text-xs font-bold text-muted hover:underline"
+      >
+        No
+      </button>
+    </span>
+  )
+}
 
 /** What each track type measures progress against - they are not the same question. */
 function progressFor(track: Track, transactions: Transaction[], today: Date) {
@@ -62,6 +130,7 @@ export function TrackList({
   only,
   editingId,
   onEdit,
+  onRemove,
 }: {
   tracks: Track[]
   transactions: Transaction[]
@@ -70,6 +139,8 @@ export function TrackList({
   only?: TrackType[]
   editingId?: string | null
   onEdit?: (track: Track) => void
+  /** Removes the track. Delete when nothing references it, archive otherwise. */
+  onRemove?: (track: Track, hasHistory: boolean) => Promise<void>
 }) {
   const types = only ?? ORDER
 
@@ -143,7 +214,7 @@ export function TrackList({
                             onClick={() => onEdit(track)}
                             aria-label={`Edit ${track.name}`}
                             title="Edit track"
-                            className="inline-flex h-6 w-7 shrink-0 items-center justify-center rounded border border-line-strong bg-surface text-muted transition hover:border-ink hover:text-ink"
+                            className={iconButton}
                           >
                             <svg
                               className="h-3.5 w-3.5 fill-current"
@@ -154,6 +225,16 @@ export function TrackList({
                               <path d="M19.71 7.04a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.05 1.05 2.75 2.75 1.05-1.05Z" />
                             </svg>
                           </button>
+                        )}
+
+                        {onRemove && (
+                          <RemoveTrackButton
+                            track={track}
+                            usedBy={transactions.filter(
+                              (t) => t.trackId === track.id && !t.deletedAt,
+                            ).length}
+                            onRemove={onRemove}
+                          />
                         )}
                       </span>
                     </div>

@@ -24,6 +24,7 @@ export interface AppContext {
   createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
   archiveTrack: (uid: string, id: string) => Promise<void>
+  deleteTrack: (uid: string, id: string) => Promise<void>
   createTransaction: (uid: string, txn: Omit<Transaction, 'id'>) => Promise<string>
   updateTransaction: (uid: string, id: string, patch: Partial<Transaction>) => Promise<void>
   softDelete: (uid: string, id: string) => Promise<void>
@@ -50,7 +51,7 @@ export default function App() {
   const { user, loading: authLoading, error, signIn, signOut } = useAuth()
   const uid = user?.uid
 
-  const { active: tracks, createTrack, updateTrack, archiveTrack } = useTracks(uid)
+  const { active: tracks, createTrack, updateTrack, archiveTrack, deleteTrack } = useTracks(uid)
   const { transactions, createTransaction, updateTransaction, softDelete } = useTransactions(uid)
   const {
     monthlyIncomeMinor,
@@ -112,6 +113,7 @@ export default function App() {
     createTrack,
     updateTrack,
     archiveTrack,
+    deleteTrack,
     createTransaction,
     updateTransaction,
     softDelete,

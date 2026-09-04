@@ -27,6 +27,7 @@ export function Home() {
     createTrack,
     updateTrack,
     archiveTrack,
+    deleteTrack,
     setIncome,
     setBalanceAnchor,
     categories,
@@ -72,12 +73,23 @@ export function Home() {
     }
   }
 
+  /*
+  A track nothing references is deleted; one with history is archived, so its
+  transactions never point at an id that no longer resolves.
+  */
+  async function removeTrack(track: Track, hasHistory: boolean) {
+    if (editing?.id === track.id) setEditing(null)
+    if (hasHistory) await archiveTrack(uid, track.id)
+    else await deleteTrack(uid, track.id)
+  }
+
   const listProps = {
     tracks,
     transactions,
     today,
     editingId: editing?.id ?? null,
     onEdit: startEdit,
+    onRemove: removeTrack,
   }
 
   return (

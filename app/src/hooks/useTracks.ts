@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { addDoc, collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
 import type { Track } from '../lib/types'
@@ -45,6 +45,18 @@ export function useTracks(uid: string | undefined) {
     await updateDoc(doc(db, userPath(uid, 'tracks'), id), patch)
   }
 
+  /**
+   * Hard delete, for a track created by mistake.
+   *
+   * Only safe when nothing references it. A track with history must be archived
+   * instead, or its transactions point at an id that no longer resolves and the
+   * ledger starts showing "Unassigned" rows with no explanation. The caller
+   * decides which, based on usage.
+   */
+  async function deleteTrack(uid: string, id: string) {
+    await deleteDoc(doc(db, userPath(uid, 'tracks'), id))
+  }
+
   async function archiveTrack(uid: string, id: string) {
     // Archived rather than deleted: it disappears from pickers but its history stays intact.
     await updateDoc(doc(db, userPath(uid, 'tracks'), id), { archived: true })
@@ -52,5 +64,5 @@ export function useTracks(uid: string | undefined) {
 
   const active = tracks.filter((t) => !t.archived)
 
-  return { tracks, active, loading, createTrack, updateTrack, archiveTrack }
+  return { tracks, active, loading, createTrack, updateTrack, archiveTrack, deleteTrack }
 }
