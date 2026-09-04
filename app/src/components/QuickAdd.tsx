@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { ActionPlan } from './ActionPlan'
+import { HeardPanel } from './HeardPanel'
 import { ParsedCandidates, needsConfirmation, type PendingCandidate } from './ParsedCandidates'
 import { VoiceButton } from './VoiceButton'
 import { usePlanExecutor } from '../hooks/usePlanExecutor'
@@ -147,6 +148,8 @@ export function QuickAdd({
   const [pending, setPending] = useState<PendingCandidate[]>([])
   const [plan, setPlan] = useState<NormalisedAction[]>([])
   const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  const [transcript, setTranscript] = useState('')
+  const [replanning, setReplanning] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
 
   const executor = usePlanExecutor(uid, tracks, onAdd)
@@ -181,17 +184,24 @@ export function QuickAdd({
   - structural changes always wait for an explicit Apply, because a wrong track
     quietly distorts Safe-to-Spend every month afterwards
   */
-  const handleCaptured = useCallback(
-    async (audioBase64: string, mimeType: string) => {
+  /*
+  Shared by the microphone and by a corrected transcript, so a re-read behaves
+  exactly like the original recording rather than taking a second code path.
+  */
+  const runPlan = useCallback(
+    async (input: { audioBase64?: string; mimeType?: string; text?: string }) => {
       setParseError(null)
       setVoiceNote(null)
 
       const result = await planActions({
-        audioBase64,
-        mimeType,
+        ...input,
         existingTracks: tracks.map((t) => ({ name: t.name, type: t.type })),
         categories: CATEGORIES,
       })
+
+      // Shown even when nothing is actionable - that is exactly when knowing
+      // what it heard is most useful.
+      setTranscript(result.transcript ?? '')
 
       const actions = normaliseAll(result.actions, tracks, today)
 
@@ -270,6 +280,26 @@ export function QuickAdd({
     [commit, tracks, today, uid],
   )
 
+  const handleCaptured = useCallback(
+    (audioBase64: string, mimeType: string) => runPlan({ audioBase64, mimeType }),
+    [runPlan],
+  )
+
+  /** Re-read corrected words. Clears the old plan first so nothing stale lingers. */
+  const handleRetry = useCallback(
+    async (text: string) => {
+      setReplanning(true)
+      setPlan([])
+      setPending([])
+      try {
+        await runPlan({ text })
+      } finally {
+        setReplanning(false)
+      }
+    },
+    [runPlan],
+  )
+
   const voice = useVoiceCapture(handleCaptured)
 
   async function applyPlan() {
@@ -324,6 +354,8 @@ export function QuickAdd({
               setParseError(null)
             }}
           />
+
+          <HeardPanel transcript={transcript} busy={replanning} onRetry={handleRetry} />
 
           <ActionPlan
             actions={plan}

@@ -287,3 +287,12 @@ describe('opening balance and bank balance from voice', () => {
     expect(isStructural(bal)).toBe(true)
   })
 })
+
+describe('the transcript tool never becomes an action', () => {
+  it('drops heard() on the client too, as defence in depth', () => {
+    // The server strips it and it is absent from ALLOWED_TOOLS, so this is the
+    // third guard - a transcript must never be applied to the ledger.
+    expect(normalise({ tool: 'heard', args: { transcript: 'spent 250 on lunch' } }, existing, TODAY))
+      .toBeNull()
+  })
+})

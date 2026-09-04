@@ -97,6 +97,8 @@ export interface PlanResult {
   actions: RawPlannedAction[]
   reply: string
   model: string
+  /** What the model heard, verbatim. */
+  transcript: string
 }
 
 /**

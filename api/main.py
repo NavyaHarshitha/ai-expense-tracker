@@ -92,6 +92,8 @@ class PlannedAction(BaseModel):
 class PlanResponse(BaseModel):
     actions: list[PlannedAction]
     reply: str
+    """What the model heard, word for word, so a mishearing is visible."""
+    transcript: str = ""
     model: str
 
 
@@ -190,7 +192,7 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
         raise HTTPException(status_code=413, detail="Recording too long - keep it under a minute")
 
     try:
-        actions, reply = plan_actions(
+        actions, reply, transcript = plan_actions(
             text=req.text,
             audio_base64=req.audio_base64,
             mime_type=req.mime_type,
@@ -210,8 +212,10 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
     if len(safe) != len(actions):
         log.warning("uid=%s dropped %d unrecognised actions", uid, len(actions) - len(safe))
 
-    log.info("uid=%s planned=%d cap=%d", uid, len(safe), MAX_ACTIONS)
-    return PlanResponse(actions=safe, reply=reply, model=MODEL)
+    log.info(
+        "uid=%s planned=%d cap=%d transcript_chars=%d", uid, len(safe), MAX_ACTIONS, len(transcript)
+    )
+    return PlanResponse(actions=safe, reply=reply, transcript=transcript, model=MODEL)
 
 
 @app.post("/insights", response_model=InsightResponse)

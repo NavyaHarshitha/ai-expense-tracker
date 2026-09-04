@@ -209,6 +209,11 @@ You turn spoken instructions about personal finances into function calls.
 You do not answer questions or chat - you decide which functions to call, with
 which arguments. Call as many as the instruction requires.
 
+ALWAYS call heard() first, exactly once, with a word-for-word transcription of
+what was said. The user needs to see what you heard, because a misheard amount
+is otherwise invisible to them - they would see a wrong number with no way to
+tell why. Transcribe verbatim even when you cannot act on it.
+
 Understanding the model of this app:
 - A "track" is a bucket money comes out of, and has one of four types:
   * spending   - a monthly allowance that resets. Daily Expenses, Eating Out.
@@ -250,6 +255,26 @@ cannot do - call nothing and reply in one short sentence saying so."""
 TOOLS = [
     {
         "function_declarations": [
+            {
+                "name": "heard",
+                "description": (
+                    "Report what the user actually said, transcribed word for word. "
+                    "ALWAYS call this exactly once, before any other function."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "transcript": {
+                            "type": "STRING",
+                            "description": (
+                                "The user's words verbatim. Do not tidy, translate or "
+                                "summarise. Numbers as spoken."
+                            ),
+                        },
+                    },
+                    "required": ["transcript"],
+                },
+            },
             {
                 "name": "create_track",
                 "description": (
@@ -384,9 +409,11 @@ def plan_actions(
     categories: list[str],
     today: str | None = None,
     timezone: str | None = None,
-) -> tuple[list[dict], str]:
+) -> tuple[list[dict], str, str]:
     """
     Turn an instruction into a list of intended function calls.
+
+    Returns (actions, reply, transcript).
 
     Returns (actions, reply). Nothing is executed here - the caller sends these
     back to the client, which confirms them and applies them through its own
@@ -433,12 +460,18 @@ def plan_actions(
 
     actions: list[dict] = []
     reply_parts: list[str] = []
+    transcript = ""
 
     candidates = response.candidates or []
     for part in (candidates[0].content.parts if candidates and candidates[0].content else []):
         call = getattr(part, "function_call", None)
         if call and call.name:
-            actions.append({"tool": call.name, "args": dict(call.args or {})})
+            args = dict(call.args or {})
+            # heard() is not an action - it is the transcript, surfaced separately.
+            if call.name == "heard":
+                transcript = str(args.get("transcript") or "").strip()
+                continue
+            actions.append({"tool": call.name, "args": args})
         elif getattr(part, "text", None):
             reply_parts.append(part.text)
 
@@ -446,4 +479,4 @@ def plan_actions(
         log.warning("Truncating %d actions to %d", len(actions), MAX_ACTIONS)
         actions = actions[:MAX_ACTIONS]
 
-    return actions, " ".join(reply_parts).strip()
+    return actions, " ".join(reply_parts).strip(), transcript
