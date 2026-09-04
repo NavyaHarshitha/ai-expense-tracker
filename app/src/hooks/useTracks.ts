@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
 import type { Track } from '../lib/types'
@@ -57,6 +68,38 @@ export function useTracks(uid: string | undefined) {
     await deleteDoc(doc(db, userPath(uid, 'tracks'), id))
   }
 
+  /**
+   * Move every transaction off a track, then delete it.
+   *
+   * This is what makes deleting a used track safe rather than forbidden. The
+   * rows are reassigned first, so nothing is left pointing at an id that no
+   * longer resolves - which would surface as "Unassigned" entries with no
+   * explanation. Chunked, since a batch holds 500 writes.
+   */
+  async function reassignAndDeleteTrack(uid: string, id: string, toTrackId: string) {
+    if (id === toTrackId) return { rowsMoved: 0 }
+
+    const affected = await getDocs(
+      query(collection(db, userPath(uid, 'transactions')), where('trackId', '==', id)),
+    )
+
+    let rowsMoved = 0
+
+    for (let i = 0; i < affected.docs.length; i += 450) {
+      const batch = writeBatch(db)
+      for (const d of affected.docs.slice(i, i + 450)) {
+        batch.update(d.ref, { trackId: toTrackId, updatedAt: Date.now() })
+        rowsMoved++
+      }
+      await batch.commit()
+    }
+
+    // Only once nothing references it any more.
+    await deleteDoc(doc(db, userPath(uid, 'tracks'), id))
+
+    return { rowsMoved }
+  }
+
   async function archiveTrack(uid: string, id: string) {
     // Archived rather than deleted: it disappears from pickers but its history stays intact.
     await updateDoc(doc(db, userPath(uid, 'tracks'), id), { archived: true })
@@ -64,5 +107,14 @@ export function useTracks(uid: string | undefined) {
 
   const active = tracks.filter((t) => !t.archived)
 
-  return { tracks, active, loading, createTrack, updateTrack, archiveTrack, deleteTrack }
+  return {
+    tracks,
+    active,
+    loading,
+    createTrack,
+    updateTrack,
+    archiveTrack,
+    deleteTrack,
+    reassignAndDeleteTrack,
+  }
 }

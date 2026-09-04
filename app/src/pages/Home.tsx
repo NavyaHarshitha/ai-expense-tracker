@@ -28,6 +28,7 @@ export function Home() {
     updateTrack,
     archiveTrack,
     deleteTrack,
+    reassignAndDeleteTrack,
     setIncome,
     setBalanceAnchor,
     categories,
@@ -90,6 +91,10 @@ export function Home() {
     editingId: editing?.id ?? null,
     onEdit: startEdit,
     onRemove: removeTrack,
+    onReassignAndDelete: async (track: Track, toTrackId: string) => {
+      if (editing?.id === track.id) setEditing(null)
+      await reassignAndDeleteTrack(uid, track.id, toTrackId)
+    },
   }
 
   return (

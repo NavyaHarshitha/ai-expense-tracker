@@ -12,24 +12,35 @@ const iconButton =
   'inline-flex h-6 w-7 shrink-0 items-center justify-center rounded border border-line-strong bg-surface text-muted transition hover:border-ink hover:text-ink'
 
 /*
-Remove, with a two-step confirm and the right verb for the situation.
+Remove, with the choice the situation actually presents.
 
 A track nothing references is deleted outright - it was a mistake, and archiving
-mistakes just fills the archive. A track with history is archived instead: its
-transactions point at this id, and deleting it would leave the ledger showing
-"Unassigned" rows with no explanation of why.
+mistakes just fills the archive. A track WITH history offers both: archive it
+(history intact, hidden from pickers), or move its entries somewhere else and
+delete it. Blocking delete outright was the wrong answer - a track can be a
+mistake and still have a stray row on it, which is exactly what happens when
+income lands on the only spending track.
+
+The count is shown either way. "You cannot delete this" with no reason given is
+the thing that makes an app feel broken.
 */
 function RemoveTrackButton({
   track,
   usedBy,
+  moveTargets,
   onRemove,
+  onReassignAndDelete,
 }: {
   track: Track
   usedBy: number
+  /** Other live tracks the entries could move to. */
+  moveTargets: Track[]
   onRemove: (track: Track, hasHistory: boolean) => Promise<void>
+  onReassignAndDelete?: (track: Track, toTrackId: string) => Promise<void>
 }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [moveTo, setMoveTo] = useState(moveTargets[0]?.id ?? '')
 
   const hasHistory = usedBy > 0
 
@@ -38,8 +49,8 @@ function RemoveTrackButton({
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        aria-label={`${hasHistory ? 'Archive' : 'Delete'} ${track.name}`}
-        title={hasHistory ? 'Archive track' : 'Delete track'}
+        aria-label={`Remove ${track.name}`}
+        title={hasHistory ? `Archive or delete (${usedBy} entries)` : 'Delete track'}
         className={iconButton}
       >
         <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
@@ -50,25 +61,89 @@ function RemoveTrackButton({
     )
   }
 
+  // Nothing points at it - a plain delete is safe.
+  if (!hasHistory) {
+    return (
+      <span className="flex items-center gap-1">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            await onRemove(track, false)
+          }}
+          className="rounded border border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-red-50 disabled:opacity-50"
+        >
+          {busy ? '…' : 'Delete'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirming(false)}
+          className="rounded px-2 py-0.5 text-xs font-bold text-muted hover:underline"
+        >
+          No
+        </button>
+      </span>
+    )
+  }
+
   return (
-    <span className="flex items-center gap-1">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true)
-          await onRemove(track, hasHistory)
-        }}
-        className="rounded border border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-red-50 disabled:opacity-50"
-      >
-        {busy ? '…' : hasHistory ? 'Archive' : 'Delete'}
-      </button>
+    <span className="grid w-full gap-2 rounded-field border border-line-strong bg-canvas p-3 text-left">
+      <span className="text-sm text-ink">
+        <strong className="tnum">{usedBy}</strong> entr{usedBy === 1 ? 'y' : 'ies'} use this
+        track.
+      </span>
+
+      <span className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            await onRemove(track, true)
+          }}
+          className="rounded border border-line-strong px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-ink-soft transition hover:border-ink disabled:opacity-50"
+        >
+          Archive
+        </button>
+        <span className="text-xs text-muted">keeps history, hides the track</span>
+      </span>
+
+      {onReassignAndDelete && moveTargets.length > 0 && (
+        <span className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy || !moveTo}
+            onClick={async () => {
+              setBusy(true)
+              await onReassignAndDelete(track, moveTo)
+            }}
+            className="rounded border border-danger px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-red-50 disabled:opacity-50"
+          >
+            {busy ? '…' : 'Move & delete'}
+          </button>
+          <span className="text-xs text-muted">move them to</span>
+          <select
+            value={moveTo}
+            onChange={(e) => setMoveTo(e.target.value)}
+            aria-label="Move entries to"
+            className="rounded border border-line-strong bg-surface px-2 py-1 text-xs"
+          >
+            {moveTargets.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </span>
+      )}
+
       <button
         type="button"
         onClick={() => setConfirming(false)}
-        className="rounded px-2 py-0.5 text-xs font-bold text-muted hover:underline"
+        className="justify-self-start rounded px-2 py-0.5 text-xs font-bold text-muted hover:underline"
       >
-        No
+        Cancel
       </button>
     </span>
   )
@@ -92,8 +167,6 @@ function progressFor(track: Track, transactions: Transaction[], today: Date) {
       return { used, total: track.monthlyLimitMinor ?? 0, caption: 'spent this month' }
     }
     case 'commitment': {
-      // Has this month's commitment actually been paid? Previously hardcoded to 0,
-      // which meant the bar could never answer the only question it exists to answer.
       const paid = netOf(mine.filter((t) => isInMonth(t.occurredOn, today)))
       const due = track.commitmentAmountMinor ?? 0
       return {
@@ -131,6 +204,7 @@ export function TrackList({
   editingId,
   onEdit,
   onRemove,
+  onReassignAndDelete,
 }: {
   tracks: Track[]
   transactions: Transaction[]
@@ -141,6 +215,7 @@ export function TrackList({
   onEdit?: (track: Track) => void
   /** Removes the track. Delete when nothing references it, archive otherwise. */
   onRemove?: (track: Track, hasHistory: boolean) => Promise<void>
+  onReassignAndDelete?: (track: Track, toTrackId: string) => Promise<void>
 }) {
   const types = only ?? ORDER
 
@@ -233,7 +308,9 @@ export function TrackList({
                             usedBy={transactions.filter(
                               (t) => t.trackId === track.id && !t.deletedAt,
                             ).length}
+                            moveTargets={tracks.filter((t) => !t.archived && t.id !== track.id)}
                             onRemove={onRemove}
+                            onReassignAndDelete={onReassignAndDelete}
                           />
                         )}
                       </span>
