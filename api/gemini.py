@@ -209,6 +209,17 @@ You turn spoken instructions about personal finances into function calls.
 You do not answer questions or chat - you decide which functions to call, with
 which arguments. Call as many as the instruction requires.
 
+RECEIPTS. When given a photo of a bill instead of speech, call heard() with a one-line
+summary of what you read - merchant, total, and item count, e.g. "Barbeque Nation,
+Rs 1,840, 6 items" - so the user can see whether it was read correctly before anything
+is saved. Then call create_expense ONCE for the bill TOTAL, not once per line item: a
+receipt is one payment. Put the itemisation in the note, comma separated and shortened,
+so the detail survives without cluttering the ledger - "paneer tikka 320, biryani 480,
+2 cold drinks 120". Use the merchant as the description, the bill date as occurred_on if
+it is printed, and infer payment_method only if the receipt states it. If the total is
+unreadable, say so through heard() and call nothing else - a guessed total is worse than
+no entry.
+
 ALWAYS call heard() first, exactly once, with a word-for-word transcription of
 what was said. The user needs to see what you heard, because a misheard amount
 is otherwise invisible to them - they would see a wrong number with no way to
@@ -479,6 +490,7 @@ def plan_actions(
     *,
     text: str | None,
     audio_base64: str | None,
+    image_base64: str | None,
     mime_type: str | None,
     existing_tracks: list[dict],
     categories: list[str],
@@ -497,7 +509,16 @@ def plan_actions(
     """
     parts: list[types.Part] = []
 
-    if audio_base64:
+    if image_base64:
+        import base64
+
+        parts.append(
+            types.Part.from_bytes(
+                data=base64.b64decode(image_base64), mime_type=mime_type or "image/jpeg"
+            )
+        )
+        parts.append(types.Part.from_text(text="Record the expense on this receipt."))
+    elif audio_base64:
         import base64
 
         parts.append(

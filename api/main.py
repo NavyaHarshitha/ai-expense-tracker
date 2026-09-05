@@ -40,6 +40,10 @@ app.add_middleware(
 # a ten-minute recording by accident. ~1MB of base64 is roughly a minute of opus.
 MAX_AUDIO_BASE64 = 1_500_000
 
+# Photos are bigger than voice notes, but the client downscales before upload -
+# a bill only needs enough resolution to read, not 12 megapixels.
+MAX_IMAGE_BASE64 = 4_000_000
+
 DEFAULT_CATEGORIES = ["Food", "Transport", "Groceries", "Shopping", "Bills", "Health", "Other"]
 DEFAULT_METHODS = ["upi", "cash", "card", "bank_transfer"]
 
@@ -75,6 +79,8 @@ class ParseResponse(BaseModel):
 class PlanRequest(BaseModel):
     text: str | None = None
     audio_base64: str | None = None
+    """A photographed receipt, downscaled client-side."""
+    image_base64: str | None = None
     mime_type: str | None = None
     """Name and type only - the planner never needs amounts or the ledger itself."""
     existing_tracks: list[dict] = Field(default_factory=list)
@@ -190,16 +196,20 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
     its own Firestore write path, so the security rules stay the only
     authorization layer and this service holds no write credentials at all.
     """
-    if not req.text and not req.audio_base64:
-        raise HTTPException(status_code=400, detail="Provide either text or audio_base64")
+    if not req.text and not req.audio_base64 and not req.image_base64:
+        raise HTTPException(status_code=400, detail="Provide text, audio_base64 or image_base64")
 
     if req.audio_base64 and len(req.audio_base64) > MAX_AUDIO_BASE64:
         raise HTTPException(status_code=413, detail="Recording too long - keep it under a minute")
+
+    if req.image_base64 and len(req.image_base64) > MAX_IMAGE_BASE64:
+        raise HTTPException(status_code=413, detail="Image too large - try a tighter crop")
 
     try:
         actions, reply, transcript = plan_actions(
             text=req.text,
             audio_base64=req.audio_base64,
+            image_base64=req.image_base64,
             mime_type=req.mime_type,
             existing_tracks=req.existing_tracks,
             categories=req.categories or DEFAULT_CATEGORIES,
@@ -218,8 +228,10 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
     if len(safe) != len(actions):
         log.warning("uid=%s dropped %d unrecognised actions", uid, len(actions) - len(safe))
 
+    source = "image" if req.image_base64 else "audio" if req.audio_base64 else "text"
     log.info(
-        "uid=%s planned=%d cap=%d transcript_chars=%d", uid, len(safe), MAX_ACTIONS, len(transcript)
+        "uid=%s source=%s planned=%d cap=%d transcript_chars=%d",
+        uid, source, len(safe), MAX_ACTIONS, len(transcript),
     )
     return PlanResponse(actions=safe, reply=reply, transcript=transcript, model=MODEL)
 

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { ActionPlan } from './ActionPlan'
+import { ReceiptButton } from './ReceiptButton'
 import { HeardPanel } from './HeardPanel'
 import { ParsedCandidates, needsConfirmation, type PendingCandidate } from './ParsedCandidates'
 import { VoiceButton } from './VoiceButton'
 import { usePlanExecutor } from '../hooks/usePlanExecutor'
+import { useReceiptCapture } from '../hooks/useReceiptCapture'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
 import { type ParsedCandidate, planActions } from '../lib/api'
 import { toPaise } from '../lib/money'
@@ -161,6 +163,8 @@ export function QuickAdd({
   const [plan, setPlan] = useState<NormalisedAction[]>([])
   const [voiceNote, setVoiceNote] = useState<string | null>(null)
   const [transcript, setTranscript] = useState('')
+  // Which input produced the current transcript, so the panel can say 'Heard' or 'Read'.
+  const [inputKind, setInputKind] = useState<'voice' | 'receipt'>('voice')
   const [replanning, setReplanning] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
 
@@ -201,7 +205,12 @@ export function QuickAdd({
   exactly like the original recording rather than taking a second code path.
   */
   const runPlan = useCallback(
-    async (input: { audioBase64?: string; mimeType?: string; text?: string }) => {
+    async (input: {
+      audioBase64?: string
+      imageBase64?: string
+      mimeType?: string
+      text?: string
+    }) => {
       setParseError(null)
       setVoiceNote(null)
 
@@ -314,7 +323,19 @@ export function QuickAdd({
   )
 
   const handleCaptured = useCallback(
-    (audioBase64: string, mimeType: string) => runPlan({ audioBase64, mimeType }),
+    (audioBase64: string, mimeType: string) => {
+      setInputKind('voice')
+      return runPlan({ audioBase64, mimeType })
+    },
+    [runPlan],
+  )
+
+  /* Same planner, same preview, same confirmation - only the input differs. */
+  const handleReceipt = useCallback(
+    (imageBase64: string, mimeType: string) => {
+      setInputKind('receipt')
+      return runPlan({ imageBase64, mimeType })
+    },
     [runPlan],
   )
 
@@ -322,6 +343,7 @@ export function QuickAdd({
   const handleRetry = useCallback(
     async (text: string) => {
       setReplanning(true)
+      setInputKind('voice')
       setPlan([])
       setPending([])
       try {
@@ -334,6 +356,7 @@ export function QuickAdd({
   )
 
   const voice = useVoiceCapture(handleCaptured)
+  const receipt = useReceiptCapture(handleReceipt)
 
   async function applyPlan() {
     const result = await executor.apply(plan)
@@ -388,7 +411,20 @@ export function QuickAdd({
             }}
           />
 
-          <HeardPanel transcript={transcript} busy={replanning} onRetry={handleRetry} />
+          <ReceiptButton
+            state={receipt.state}
+            error={receipt.error}
+            preview={receipt.preview}
+            onFile={receipt.capture}
+            onDismiss={receipt.reset}
+          />
+
+          <HeardPanel
+            transcript={transcript}
+            kind={inputKind}
+            busy={replanning}
+            onRetry={handleRetry}
+          />
 
           <ActionPlan
             actions={plan}

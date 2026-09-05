@@ -110,6 +110,8 @@ export interface PlanResult {
 export async function planActions(input: {
   text?: string
   audioBase64?: string
+  /** A photographed receipt, already downscaled by the client. */
+  imageBase64?: string
   mimeType?: string
   existingTracks: Array<{ name: string; type: string }>
   categories: string[]
@@ -134,6 +136,7 @@ export async function planActions(input: {
   return post<PlanResult>('/plan', {
     text: input.text,
     audio_base64: input.audioBase64,
+    image_base64: input.imageBase64,
     mime_type: input.mimeType,
     existing_tracks: input.existingTracks,
     categories: input.categories,

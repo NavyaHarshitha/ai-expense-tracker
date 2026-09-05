@@ -12,10 +12,13 @@ from text - no second recording, no repeating yourself to a phone.
 */
 export function HeardPanel({
   transcript,
+  kind = 'voice',
   busy,
   onRetry,
 }: {
   transcript: string
+  /** A photo is read, not heard - the label should say which. */
+  kind?: 'voice' | 'receipt'
   busy: boolean
   onRetry: (text: string) => Promise<void>
 }) {
@@ -35,7 +38,9 @@ export function HeardPanel({
   return (
     <div className={`${card} border-l-4 border-l-line-strong p-4`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-sm font-extrabold uppercase tracking-wider text-muted">Heard</span>
+        <span className="text-sm font-extrabold uppercase tracking-wider text-muted">
+          {kind === 'receipt' ? 'Read from the bill' : 'Heard'}
+        </span>
 
         {!editing && (
           <button
@@ -44,7 +49,7 @@ export function HeardPanel({
             onClick={() => setEditing(true)}
             disabled={busy}
           >
-            Not what I said
+            {kind === 'receipt' ? 'Not right' : 'Not what I said'}
           </button>
         )}
       </div>
@@ -84,7 +89,8 @@ export function HeardPanel({
           </div>
 
           <p className="m-0 text-sm text-muted">
-            Fix the words and it re-reads them &mdash; no need to record again.
+            Fix the words and it re-reads them &mdash; no need to
+            {kind === 'receipt' ? ' photograph it again.' : ' record again.'}
           </p>
         </div>
       ) : (
