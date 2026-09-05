@@ -5,7 +5,7 @@ import { fetchInsight, type MonthlyInsight } from '../lib/api'
 import { db, userPath } from '../lib/firebase'
 import { categoryBreakdown } from '../lib/insights'
 import { isInMonth, type SafeToSpendResult } from '../lib/safeToSpend'
-import type { Transaction } from '../lib/types'
+import type { Track, Transaction } from '../lib/types'
 
 /*
 The Gemini-written monthly review, generated once and cached.
@@ -34,9 +34,10 @@ export function useMonthlyInsight(args: {
   today: Date
   result: SafeToSpendResult
   transactions: Transaction[]
+  tracks: Track[]
   enabled: boolean
 }) {
-  const { uid, today, result, transactions, enabled } = args
+  const { uid, today, result, transactions, tracks, enabled } = args
 
   const [insight, setInsight] = useState<CachedInsight | null>(null)
   const [loading, setLoading] = useState(false)
@@ -64,7 +65,7 @@ export function useMonthlyInsight(args: {
     setError(null)
 
     try {
-      const breakdown = categoryBreakdown(transactions, today)
+      const breakdown = categoryBreakdown(transactions, tracks, today)
 
       const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
       const previousSpent = transactions
@@ -108,7 +109,7 @@ export function useMonthlyInsight(args: {
     } finally {
       setLoading(false)
     }
-  }, [uid, loading, transactions, today, result, key])
+  }, [uid, loading, transactions, tracks, today, result, key])
 
   /*
   Generate automatically only once per month, and only with something to write

@@ -12,6 +12,27 @@ delivery") arrives with the assistant - these are the numbers it will reason ove
 import { isInMonth } from './safeToSpend'
 import type { Track, Transaction } from './types'
 
+/*
+Commitments are excluded from every figure on this page, exactly as they are
+from Safe-to-Spend.
+
+The reason is the same in both places: an EMI or a SIP was reserved before the
+month began, so counting it as spending both double-counts it against the
+reserve and drowns out the spending that can actually be changed. A donut
+reporting "Mutual Fund 46%" is technically true and useless - you were never
+going to skip the SIP.
+
+The money is not hidden; it is reported separately as commitments paid.
+*/
+export function commitmentTrackIds(tracks: Track[]): Set<string> {
+  return new Set(tracks.filter((t) => t.type === 'commitment').map((t) => t.id))
+}
+
+function discretionary(rows: Transaction[], tracks: Track[]): Transaction[] {
+  const committed = commitmentTrackIds(tracks)
+  return rows.filter((t) => !committed.has(t.trackId))
+}
+
 /** Net spend of a set of rows: expenses add, refunds subtract, income/transfers ignored. */
 function netSpend(rows: Transaction[]): number {
   return rows.reduce((sum, t) => {
@@ -32,8 +53,12 @@ export interface CategorySlice {
 }
 
 /** Spend by category for a given month, largest first. */
-export function categoryBreakdown(transactions: Transaction[], ref: Date): CategorySlice[] {
-  const rows = live(transactions).filter((t) => isInMonth(t.occurredOn, ref))
+export function categoryBreakdown(
+  transactions: Transaction[],
+  tracks: Track[],
+  ref: Date,
+): CategorySlice[] {
+  const rows = discretionary(live(transactions), tracks).filter((t) => isInMonth(t.occurredOn, ref))
 
   const byCategory = new Map<string, number>()
   for (const t of rows) {
@@ -61,8 +86,12 @@ export interface DayPoint {
 }
 
 /** Daily spend series for the month containing `ref`, one point per elapsed day. */
-export function dailySeries(transactions: Transaction[], ref: Date): DayPoint[] {
-  const rows = live(transactions).filter((t) => isInMonth(t.occurredOn, ref))
+export function dailySeries(
+  transactions: Transaction[],
+  tracks: Track[],
+  ref: Date,
+): DayPoint[] {
+  const rows = discretionary(live(transactions), tracks).filter((t) => isInMonth(t.occurredOn, ref))
   const lastDay = ref.getDate()
 
   const byDay = new Map<number, number>()
@@ -80,25 +109,38 @@ export function dailySeries(transactions: Transaction[], ref: Date): DayPoint[] 
 }
 
 export interface Summary {
+  /** Discretionary only - commitments are reported separately. */
   totalSpentMinor: number
   count: number
   highestMinor: number
   topCategory: string
+  /** Commitment-track payments made this month, so the money is still visible. */
+  committedPaidMinor: number
 }
 
 /** The four headline figures, matching the original dashboard's summary cards. */
-export function monthSummary(transactions: Transaction[], ref: Date): Summary {
-  const rows = live(transactions).filter(
-    (t) => isInMonth(t.occurredOn, ref) && t.movement === 'expense',
+export function monthSummary(
+  transactions: Transaction[],
+  tracks: Track[],
+  ref: Date,
+): Summary {
+  const thisMonth = live(transactions).filter((t) => isInMonth(t.occurredOn, ref))
+  const committed = commitmentTrackIds(tracks)
+
+  const spendRows = thisMonth.filter(
+    (t) => t.movement === 'expense' && !committed.has(t.trackId),
   )
 
-  const breakdown = categoryBreakdown(transactions, ref)
+  const breakdown = categoryBreakdown(transactions, tracks, ref)
 
   return {
-    totalSpentMinor: netSpend(live(transactions).filter((t) => isInMonth(t.occurredOn, ref))),
-    count: rows.length,
-    highestMinor: rows.reduce((max, t) => Math.max(max, t.amountMinor), 0),
+    totalSpentMinor: netSpend(discretionary(thisMonth, tracks)),
+    count: spendRows.length,
+    // Highest DISCRETIONARY expense - a Rs 15,000 SIP is not the month's
+    // biggest decision, it is a standing order.
+    highestMinor: spendRows.reduce((max, t) => Math.max(max, t.amountMinor), 0),
     topCategory: breakdown[0]?.name ?? 'None',
+    committedPaidMinor: netSpend(thisMonth.filter((t) => committed.has(t.trackId))),
   }
 }
 
@@ -131,11 +173,10 @@ export function buildInsights(args: {
   const { tracks, transactions, today, safeToSpendMinor, daysRemaining } = args
   const out: Insight[] = []
 
-  const breakdown = categoryBreakdown(transactions, today)
-  const thisMonth = netSpend(live(transactions).filter((t) => isInMonth(t.occurredOn, today)))
-  const lastMonth = netSpend(
-    live(transactions).filter((t) => isInMonth(t.occurredOn, previousMonth(today))),
-  )
+  const breakdown = categoryBreakdown(transactions, tracks, today)
+  const spendable = discretionary(live(transactions), tracks)
+  const thisMonth = netSpend(spendable.filter((t) => isInMonth(t.occurredOn, today)))
+  const lastMonth = netSpend(spendable.filter((t) => isInMonth(t.occurredOn, previousMonth(today))))
 
   // 1. Where the money is actually going.
   if (breakdown.length > 0) {

@@ -35,9 +35,9 @@ export function Dashboard() {
   // Recharts takes colours as props, so they resolve in JS rather than CSS.
   const chart = useMemo(() => chartTheme(theme), [theme])
 
-  const summary = useMemo(() => monthSummary(transactions, today), [transactions, today])
-  const breakdown = useMemo(() => categoryBreakdown(transactions, today), [transactions, today])
-  const series = useMemo(() => dailySeries(transactions, today), [transactions, today])
+  const summary = useMemo(() => monthSummary(transactions, tracks, today), [transactions, tracks, today])
+  const breakdown = useMemo(() => categoryBreakdown(transactions, tracks, today), [transactions, tracks, today])
+  const series = useMemo(() => dailySeries(transactions, tracks, today), [transactions, tracks, today])
 
   const insights = useMemo(
     () =>
@@ -58,6 +58,7 @@ export function Dashboard() {
     today,
     result,
     transactions,
+    tracks,
     enabled: transactions.length > 0,
   })
 
@@ -79,7 +80,15 @@ export function Dashboard() {
 
       {/* The four headline figures, as in the original dashboard. */}
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Total Spent" value={formatINR(summary.totalSpentMinor)} />
+        <Stat
+          label="Discretionary spend"
+          value={formatINR(summary.totalSpentMinor)}
+          hint={
+            summary.committedPaidMinor > 0
+              ? `plus ${formatINR(summary.committedPaidMinor)} of commitments paid`
+              : undefined
+          }
+        />
         <Stat label="Transactions" value={String(summary.count)} />
         <Stat label="Highest Expense" value={formatINR(summary.highestMinor)} />
         <Stat label="Top Category" value={summary.topCategory} />
@@ -88,7 +97,11 @@ export function Dashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Where the money went */}
         <section className={`${card} p-6`}>
-          <h2 className={sectionTitle}>Where it went</h2>
+          <h2 className={`${sectionTitle} mb-1`}>Where it went</h2>
+          <p className="mb-4 text-sm text-muted">
+            Discretionary spending only. EMIs, rent and SIPs were reserved before the month
+            started, so they are not decisions this chart can help you with.
+          </p>
 
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -180,7 +193,8 @@ export function Dashboard() {
           </div>
 
           <p className="m-0 mt-4 text-sm text-muted">
-            Each bar is one day of {monthName.split(' ')[0]}. Gaps are days you spent nothing.
+            Each bar is one day of {monthName.split(' ')[0]}, discretionary spending only. Gaps
+            are days you spent nothing.
           </p>
         </section>
       </div>
@@ -272,11 +286,14 @@ export function Dashboard() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className={`${card} p-4`}>
       <dt className="mb-2 font-bold text-muted">{label}</dt>
-      <dd className="tnum m-0 text-[28px] font-bold leading-tight text-ink">{value}</dd>
+      <dd className="m-0">
+        <span className="tnum block text-[28px] font-bold leading-tight text-ink">{value}</span>
+        {hint && <span className="mt-1 block text-sm text-muted">{hint}</span>}
+      </dd>
     </div>
   )
 }
