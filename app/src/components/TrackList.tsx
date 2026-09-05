@@ -72,7 +72,7 @@ function RemoveTrackButton({
             setBusy(true)
             await onRemove(track, false)
           }}
-          className="rounded border border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-red-50 disabled:opacity-50"
+          className="rounded border border-danger px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-danger-soft disabled:opacity-50"
         >
           {busy ? '…' : 'Delete'}
         </button>
@@ -118,7 +118,7 @@ function RemoveTrackButton({
               setBusy(true)
               await onReassignAndDelete(track, moveTo)
             }}
-            className="rounded border border-danger px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-red-50 disabled:opacity-50"
+            className="rounded border border-danger px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-danger transition hover:bg-danger-soft disabled:opacity-50"
           >
             {busy ? '…' : 'Move & delete'}
           </button>

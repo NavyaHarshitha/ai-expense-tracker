@@ -48,7 +48,7 @@ export function ReceiptButton({
       >
         <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M9 3 7.17 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9Z" />
-          <circle cx="12" cy="12.5" r="3.5" fill="#fff" />
+          <circle cx="12" cy="12.5" r="3.5" className="fill-surface" />
         </svg>
         {state === 'reading'
           ? 'Preparing the photo…'
@@ -66,7 +66,7 @@ export function ReceiptButton({
       )}
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-field border border-danger bg-red-50 px-4 py-3">
+        <div className="flex items-start justify-between gap-3 rounded-field border border-danger bg-danger-soft px-4 py-3">
           <p className="m-0 text-sm text-danger">{error}</p>
           <button type="button" onClick={onDismiss} aria-label="Dismiss" className="shrink-0 font-bold text-danger">
             &times;

@@ -307,7 +307,7 @@ export function TrackForm({
               type="button"
               onClick={archive}
               disabled={busy}
-              className="ml-auto rounded-full px-3 py-2 font-bold text-danger transition hover:bg-red-50"
+              className="ml-auto rounded-full px-3 py-2 font-bold text-danger transition hover:bg-danger-soft"
             >
               Archive track
             </button>

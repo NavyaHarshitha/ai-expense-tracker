@@ -269,7 +269,7 @@ export function TransactionList({
                       <th
                         key={h || i}
                         scope="col"
-                        className="border-b border-line bg-[#f9fafb] px-4 py-4 text-left text-sm uppercase tracking-wide text-ink-soft"
+                        className="border-b border-line bg-surface-2 px-4 py-4 text-left text-sm uppercase tracking-wide text-ink-soft"
                       >
                         {h || <span className="sr-only">Actions</span>}
                       </th>

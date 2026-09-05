@@ -192,7 +192,7 @@ export function CategoryManager({
                   </button>
                   <button
                     type="button"
-                    className="rounded-full px-3 py-2 font-bold text-danger transition hover:bg-red-50"
+                    className="rounded-full px-3 py-2 font-bold text-danger transition hover:bg-danger-soft"
                     onClick={() => onArchive(c.id)}
                   >
                     Archive

@@ -96,7 +96,7 @@ export function VoiceButton({
       )}
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-field border border-danger bg-red-50 px-4 py-3">
+        <div className="flex items-start justify-between gap-3 rounded-field border border-danger bg-danger-soft px-4 py-3">
           <p className="m-0 text-sm text-danger">{error}</p>
           <button
             type="button"

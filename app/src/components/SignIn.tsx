@@ -3,10 +3,12 @@ import { cardPadded, primaryButton } from '../lib/ui'
 export function SignIn({ onSignIn, error }: { onSignIn: () => void; error: string | null }) {
   return (
     <div
-      className="grid min-h-dvh place-items-center p-6"
+      className="grid min-h-dvh place-items-center bg-canvas p-6"
       style={{
+        // A pink wash over whichever ground the theme paints, rather than over
+        // an assumed white one.
         background:
-          'radial-gradient(circle at top left, rgba(219,39,119,0.12), transparent 34%), linear-gradient(180deg, #ffffff, #f8fafc)',
+          'radial-gradient(circle at top left, rgba(219,39,119,0.12), transparent 34%), linear-gradient(180deg, var(--color-surface), var(--color-canvas))',
       }}
     >
       <div className={`${cardPadded} w-[min(420px,100%)] text-center`}>

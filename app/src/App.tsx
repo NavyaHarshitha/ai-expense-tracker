@@ -2,10 +2,12 @@ import { useMemo } from 'react'
 import { NavLink, Outlet, useOutletContext } from 'react-router-dom'
 
 import { SignIn } from './components/SignIn'
+import { ThemeToggle } from './components/ThemeToggle'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
 import { useTracks } from './hooks/useTracks'
 import { useCategories } from './hooks/useCategories'
+import { useTheme, type ResolvedTheme } from './hooks/useTheme'
 import { useToday } from './hooks/useToday'
 import { useTransactions } from './hooks/useTransactions'
 import { computeBalance, type BalanceResult } from './lib/balance'
@@ -20,6 +22,8 @@ export interface AppContext {
   result: SafeToSpendResult
   balance: BalanceResult
   categories: Category[]
+  /** Charts need the actual colour in JS, not through a CSS variable. */
+  theme: ResolvedTheme
   today: Date
   createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
@@ -88,6 +92,7 @@ export default function App() {
   no Firestore change arrives.
   */
   const today = useToday()
+  const theme = useTheme()
 
   const balance = useMemo(
     () =>
@@ -121,6 +126,7 @@ export default function App() {
     result,
     balance,
     categories,
+    theme: theme.resolved,
     today,
     createTrack,
     updateTrack,
@@ -165,6 +171,7 @@ export default function App() {
           </ul>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle choice={theme.choice} resolved={theme.resolved} onCycle={theme.cycle} />
             <span className="hidden text-sm text-muted sm:inline">{user.email}</span>
             <button type="button" className={linkButton} onClick={signOut}>
               Sign out

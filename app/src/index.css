@@ -24,8 +24,12 @@ as utilities instead of hand-written classes.
   --color-muted: #6b7280;
   --color-line: #e5e7eb;
   --color-line-strong: #d1d5db;
+  /* Table headers, footers and other faintly-raised strips. */
+  --color-surface-2: #f9fafb;
 
   --color-danger: #dc2626;
+  /* Tinted background behind a destructive action or an error. */
+  --color-danger-soft: #fef2f2;
   /* A caution that is not an error - near-duplicate names, burn-rate notices. */
   --color-warn: #a16207;
   --color-good: #047857;
@@ -39,12 +43,101 @@ as utilities instead of hand-written classes.
   --shadow-button: 0 10px 20px rgba(219, 39, 119, 0.22);
 }
 
+
+/*
+Dark theme.
+
+Three states, not two. An explicit choice stamps data-theme on the root; the
+default "system" setting stamps nothing, so only prefers-color-scheme separates
+light from dark. Both branches are needed, and the explicit one must win in
+either direction.
+
+Only the tokens are redefined - every bg-surface, text-ink and border-line in
+the app follows automatically, which is the whole reason the palette was written
+as variables in the first place.
+
+The pinks lighten rather than staying put: #db2777 is legible on white and muddy
+on near-black, so primary brightens and primary-dark - which is used for
+emphasis, not for depth - brightens further still.
+*/
+@layer theme {
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --color-primary: #f472b6;
+      --color-primary-dark: #f9a8d4;
+      --color-primary-soft: #2e1c28;
+      --color-primary-edge: #7d3350;
+
+      --color-lavender: #241f33;
+      --color-lavender-soft: #1e1a2b;
+
+      --color-canvas: #131119;
+      --color-surface: #1c1a24;
+      --color-surface-2: #232030;
+      --color-ink: #f5f3f7;
+      --color-ink-soft: #cfc9d8;
+      --color-muted: #9d95a8;
+      --color-line: #2e2a38;
+      --color-line-strong: #443e52;
+
+      --color-danger: #f87171;
+      --color-danger-soft: #2b1618;
+      --color-warn: #fbbf24;
+      --color-good: #34d399;
+
+      /* A shadow does not read on a dark ground; the border carries the edge. */
+      --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.45);
+      --shadow-button: 0 10px 20px rgba(244, 114, 182, 0.18);
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --color-primary: #f472b6;
+    --color-primary-dark: #f9a8d4;
+    --color-primary-soft: #2e1c28;
+    --color-primary-edge: #7d3350;
+
+    --color-lavender: #241f33;
+    --color-lavender-soft: #1e1a2b;
+
+    --color-canvas: #131119;
+    --color-surface: #1c1a24;
+    --color-surface-2: #232030;
+    --color-ink: #f5f3f7;
+    --color-ink-soft: #cfc9d8;
+    --color-muted: #9d95a8;
+    --color-line: #2e2a38;
+    --color-line-strong: #443e52;
+
+    --color-danger: #f87171;
+    --color-danger-soft: #2b1618;
+    --color-warn: #fbbf24;
+    --color-good: #34d399;
+
+    --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.45);
+    --shadow-button: 0 10px 20px rgba(244, 114, 182, 0.18);
+  }
+}
+
+/*
+Tells the browser to render its own furniture - scrollbars, date pickers, the
+native select popup - in the matching scheme. Without it a dark page keeps a
+white calendar widget.
+*/
+:root { color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { color-scheme: dark; }
+}
+:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='light'] { color-scheme: light; }
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
+  /* Explicit, so the page never borrows the host's ground. */
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);

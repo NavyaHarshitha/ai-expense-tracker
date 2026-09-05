@@ -21,7 +21,7 @@ import {
   monthSummary,
   type InsightTone,
 } from '../lib/insights'
-import { CHART_COLORS, card, eyebrow, sectionTitle } from '../lib/ui'
+import { chartTheme, card, eyebrow, sectionTitle } from '../lib/ui'
 
 const TONE_STYLES: Record<InsightTone, { border: string; label: string; text: string }> = {
   warn: { border: 'border-l-danger', label: 'Watch', text: 'text-danger' },
@@ -30,7 +30,10 @@ const TONE_STYLES: Record<InsightTone, { border: string; label: string; text: st
 }
 
 export function Dashboard() {
-  const { uid, tracks, transactions, result, today } = useApp()
+  const { uid, tracks, transactions, result, today, theme } = useApp()
+
+  // Recharts takes colours as props, so they resolve in JS rather than CSS.
+  const chart = useMemo(() => chartTheme(theme), [theme])
 
   const summary = useMemo(() => monthSummary(transactions, today), [transactions, today])
   const breakdown = useMemo(() => categoryBreakdown(transactions, today), [transactions, today])
@@ -100,16 +103,20 @@ export function Dashboard() {
                   strokeWidth={0}
                 >
                   {breakdown.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    <Cell key={i} fill={chart.series[i % chart.series.length]} />
                   ))}
                 </Pie>
                 <Tooltip
                   formatter={(value) => formatINR(Number(value))}
                   contentStyle={{
                     borderRadius: 10,
-                    border: '1px solid #e5e7eb',
+                    background: chart.tooltipBg,
+                    border: `1px solid ${chart.tooltipBorder}`,
+                    color: chart.tooltipText,
                     fontFamily: 'Arial, sans-serif',
                   }}
+                  itemStyle={{ color: chart.tooltipText }}
+                  labelStyle={{ color: chart.tooltipText }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -122,7 +129,7 @@ export function Dashboard() {
                 <span
                   aria-hidden="true"
                   className="h-3 w-3 shrink-0 rounded-full"
-                  style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+                  style={{ background: chart.series[i % chart.series.length] }}
                 />
                 <span className="flex-1 text-ink">{slice.name}</span>
                 <span className="tnum font-bold text-ink">{formatINR(slice.valueMinor)}</span>
@@ -143,13 +150,13 @@ export function Dashboard() {
               <BarChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
-                  axisLine={{ stroke: '#e5e7eb' }}
+                  tick={{ fontSize: 11, fill: chart.axis }}
+                  axisLine={{ stroke: chart.grid }}
                   tickLine={false}
                   interval={Math.max(0, Math.floor(series.length / 10) - 1)}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                  tick={{ fontSize: 11, fill: chart.axis }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => (v ? `${Math.round(v / 100000)}k` : '0')}
@@ -159,11 +166,15 @@ export function Dashboard() {
                   labelFormatter={(l) => `Day ${l}`}
                   contentStyle={{
                     borderRadius: 10,
-                    border: '1px solid #e5e7eb',
+                    background: chart.tooltipBg,
+                    border: `1px solid ${chart.tooltipBorder}`,
+                    color: chart.tooltipText,
                     fontFamily: 'Arial, sans-serif',
                   }}
+                  itemStyle={{ color: chart.tooltipText }}
+                  labelStyle={{ color: chart.tooltipText }}
                 />
-                <Bar dataKey="spentMinor" fill="#db2777" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="spentMinor" fill={chart.bar} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
