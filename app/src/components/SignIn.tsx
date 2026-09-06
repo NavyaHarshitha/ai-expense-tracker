@@ -4,12 +4,6 @@ export function SignIn({ onSignIn, error }: { onSignIn: () => void; error: strin
   return (
     <div
       className="grid min-h-dvh place-items-center bg-canvas p-6"
-      style={{
-        // A pink wash over whichever ground the theme paints, rather than over
-        // an assumed white one.
-        background:
-          'radial-gradient(circle at top left, rgba(11,111,102,0.10), transparent 34%), linear-gradient(180deg, var(--color-surface), var(--color-canvas))',
-      }}
     >
       <div className={`${cardPadded} w-[min(420px,100%)] text-center`}>
         <h1 className="mb-4 text-3xl font-bold tracking-tight text-ink">AI Expense Tracker</h1>

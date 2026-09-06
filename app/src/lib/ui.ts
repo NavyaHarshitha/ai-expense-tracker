@@ -37,36 +37,42 @@ pass every adjacent gate. The dark column is the same eight hues re-stepped for
 a dark ground, not an automatic lightening: several of the light steps sit at a
 lightness that reads as a smudge on near-black.
 
+These are warm and earthy on purpose, but only as muted as they can be while
+staying legible. Below a chroma of 0.1 a colour reads as grey and stops carrying
+identity at all - a first pass at a properly Pinterest-soft set put four of the
+eight under that floor. The values here sit just above it: quiet enough to be
+easy on the eye, saturated enough to still mean something.
+
 What the validator caught that eyes would not:
 - an all-pink series set is a sequential ramp pretending to be categorical -
-  every slice the same hue, so the chart cannot be read without the legend
+  every slice the same hue, so the ring cannot be read without the legend
 - blue and violet were 10.9 apart on normal vision, under the 15 floor
-- gold and red collide under deuteranopia at delta-E 6, so they are never adjacent
-- green sits too close to BOTH teal and gold, so it is held back to slot 6
+- gold and red collide under deuteranopia, so they are never adjacent
+- sage, dusty blue and warm brown all read as grey until their chroma was raised
 
 Order is the safety mechanism, not decoration: adjacent slots are the pairs a
 reader actually compares in a stack, a ring or a legend.
 */
 export const CHART_COLORS_LIGHT = [
+  '#bd5626', // rust
   '#009184', // teal
-  '#c9820c', // gold
-  '#6b4fd0', // violet
-  '#cf3f3f', // red
-  '#3d6fa5', // blue
-  '#4f9e2f', // green
-  '#b83a86', // magenta
-  '#96601f', // brown
+  '#a8860a', // gold
+  '#8f3f7d', // plum
+  '#6d8a12', // olive
+  '#3f68ab', // blue
+  '#b03f6a', // rose
+  '#8a5510', // sienna
 ]
 
 export const CHART_COLORS_DARK = [
+  '#d9743f',
   '#17a294',
-  '#bd8a18',
-  '#8574e8',
-  '#e06060',
-  '#5183c4',
-  '#57a33c',
-  '#d4589b',
-  '#b87e3e',
+  '#b08d15',
+  '#b25a9c',
+  '#7d9c22',
+  '#5d84c4',
+  '#cf5f88',
+  '#b0721e',
 ]
 
 /**
@@ -95,26 +101,26 @@ export function chartTheme(mode: 'light' | 'dark'): ChartTheme {
   return mode === 'dark'
     ? {
         series: CHART_COLORS_DARK,
-        other: '#5c6664',
-        axis: '#93a09d',
-        grid: '#2b3231',
-        line: '#17a294',
+        other: '#6b6058',
+        axis: '#a19385',
+        grid: '#362e28',
+        line: '#d9743f',
         // Segments are separated by a ring of the surface colour, so touching
         // wedges never blur into one another.
-        surface: '#1a1e1d',
-        tooltipBg: '#1a1e1d',
-        tooltipBorder: '#414a48',
-        tooltipText: '#f2f6f5',
+        surface: '#221d19',
+        tooltipBg: '#221d19',
+        tooltipBorder: '#4b4037',
+        tooltipText: '#f5efe8',
       }
     : {
         series: CHART_COLORS_LIGHT,
-        other: '#9aa5a3',
-        axis: '#657471',
-        grid: '#e3e9e8',
-        line: '#0b6f66',
-        surface: '#ffffff',
-        tooltipBg: '#ffffff',
-        tooltipBorder: '#e3e9e8',
-        tooltipText: '#111817',
+        other: '#a89a8c',
+        axis: '#8a7d72',
+        grid: '#e8ded2',
+        line: '#a8552b',
+        surface: '#fffdfa',
+        tooltipBg: '#fffdfa',
+        tooltipBorder: '#e8ded2',
+        tooltipText: '#2b2420',
       }
 }

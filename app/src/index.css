@@ -4,45 +4,56 @@
 The original design tokens from styles.css, registered as Tailwind theme values.
 
 This is why the app can use Tailwind utilities and still look like the design
-that was already there: `bg-primary` is the teal #0b6f66, `bg-canvas` is the
+that was already there: `bg-primary` is the clay #a8552b, `bg-canvas` is a warm
 page background, `shadow-card` is the same soft shadow. One palette, expressed
 as utilities instead of hand-written classes.
 */
 @theme {
-  --color-primary: #0b6f66;
-  --color-primary-dark: #075c54;
-  --color-primary-soft: #e6f4f2;
-  --color-primary-edge: #93cfc7;
+  --color-primary: #a8552b;
+  --color-primary-dark: #8a4321;
+  --color-primary-soft: #f7ece3;
+  --color-primary-edge: #e0bfa6;
 
-  --color-lavender: #e8f1f0;
-  --color-lavender-soft: #f2f8f7;
+  --color-lavender: #f0e7db;
+  --color-lavender-soft: #f7f1e8;
 
-  --color-canvas: #f7f9f8;
-  --color-surface: #ffffff;
-  --color-ink: #111817;
-  --color-ink-soft: #374442;
-  --color-muted: #657471;
-  --color-line: #e3e9e8;
-  --color-line-strong: #cdd6d4;
+  --color-canvas: #faf6f1;
+  --color-surface: #fffdfa;
+  --color-ink: #2b2420;
+  --color-ink-soft: #574c44;
+  --color-muted: #8a7d72;
+  --color-line: #e8ded2;
+  --color-line-strong: #d5c7b8;
   /* Table headers, footers and other faintly-raised strips. */
-  --color-surface-2: #f2f5f4;
+  --color-surface-2: #f4ede4;
 
-  --color-danger: #dc2626;
+  --color-danger: #b3392f;
   /* Tinted background behind a destructive action or an error. */
-  --color-danger-soft: #fef2f2;
+  --color-danger-soft: #fbeeec;
   /* A caution that is not an error - near-duplicate names, burn-rate notices. */
-  --color-warn: #a16207;
-  --color-good: #047857;
+  --color-warn: #9a6a09;
+  --color-good: #4a7c3f;
 
-  --font-sans: Arial, Helvetica, sans-serif;
+  --font-sans: 'Inter', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  /* Headings only - never numbers, which need the sans's tabular figures. */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
 
-  --radius-card: 14px;
-  --radius-field: 10px;
+  --radius-card: 18px;
+  --radius-field: 12px;
 
-  --shadow-card: 0 12px 28px rgba(17, 24, 39, 0.08);
-  --shadow-button: 0 10px 20px rgba(11, 111, 102, 0.22);
+  --shadow-card: 0 8px 24px rgba(84, 62, 44, 0.07);
+  --shadow-button: 0 6px 16px rgba(168, 85, 43, 0.18);
 }
 
+
+/* Page headings carry the editorial voice; everything else stays plain. */
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
 
 /*
 Dark theme.
@@ -56,66 +67,68 @@ Only the tokens are redefined - every bg-surface, text-ink and border-line in
 the app follows automatically, which is the whole reason the palette was written
 as variables in the first place.
 
-The teals lighten rather than staying put: #0b6f66 is legible on white and muddy
-on near-black, so primary brightens to #17a294 and primary-dark - which is used
-for emphasis, not for depth - brightens further still.
+The dark ground is warm rather than black - an espresso brown, so the cream
+palette has somewhere to go that still feels like the same room. The clay
+lightens rather than staying put: #a8552b is legible on cream and muddy on
+near-black, so primary brightens to #d9743f and primary-dark - used for emphasis,
+not for depth - brightens further still.
 */
 @layer theme {
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-      --color-primary: #17a294;
-      --color-primary-dark: #4fc9ba;
-      --color-primary-soft: #10302d;
-      --color-primary-edge: #2f6b64;
+      --color-primary: #d9743f;
+      --color-primary-dark: #e8a077;
+      --color-primary-soft: #2e2018;
+      --color-primary-edge: #6b4a33;
 
-      --color-lavender: #1e2a29;
-      --color-lavender-soft: #18201f;
+      --color-lavender: #2b241f;
+      --color-lavender-soft: #221d19;
 
-      --color-canvas: #111413;
-      --color-surface: #1a1e1d;
-      --color-surface-2: #222726;
-      --color-ink: #f2f6f5;
-      --color-ink-soft: #c8d2d0;
-      --color-muted: #93a09d;
-      --color-line: #2b3231;
-      --color-line-strong: #414a48;
+      --color-canvas: #191512;
+      --color-surface: #221d19;
+      --color-surface-2: #2b241f;
+      --color-ink: #f5efe8;
+      --color-ink-soft: #d6cabd;
+      --color-muted: #a19385;
+      --color-line: #362e28;
+      --color-line-strong: #4b4037;
 
-      --color-danger: #f87171;
-      --color-danger-soft: #2b1618;
-      --color-warn: #fbbf24;
-      --color-good: #34d399;
+      --color-danger: #e8756a;
+      --color-danger-soft: #2e1a17;
+      --color-warn: #d9a13f;
+      --color-good: #86b578;
 
       /* A shadow does not read on a dark ground; the border carries the edge. */
-      --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.45);
-      --shadow-button: 0 10px 20px rgba(23, 162, 148, 0.20);
+      --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.4);
+      --shadow-button: 0 6px 16px rgba(217, 116, 63, 0.22);
     }
   }
 
   :root[data-theme='dark'] {
-    --color-primary: #17a294;
-    --color-primary-dark: #4fc9ba;
-    --color-primary-soft: #10302d;
-    --color-primary-edge: #2f6b64;
+    --color-primary: #d9743f;
+    --color-primary-dark: #e8a077;
+    --color-primary-soft: #2e2018;
+    --color-primary-edge: #6b4a33;
 
-    --color-lavender: #1e2a29;
-    --color-lavender-soft: #18201f;
+    --color-lavender: #2b241f;
+    --color-lavender-soft: #221d19;
 
-    --color-canvas: #111413;
-    --color-surface: #1a1e1d;
-    --color-surface-2: #222726;
-    --color-ink: #f2f6f5;
-    --color-ink-soft: #c8d2d0;
-    --color-muted: #93a09d;
-    --color-line: #2b3231;
-    --color-line-strong: #414a48;
+    --color-canvas: #191512;
+    --color-surface: #221d19;
+    --color-surface-2: #2b241f;
+    --color-ink: #f5efe8;
+    --color-ink-soft: #d6cabd;
+    --color-muted: #a19385;
+    --color-line: #362e28;
+    --color-line-strong: #4b4037;
 
-    --color-danger: #f87171;
-    --color-danger-soft: #2b1618;
-    --color-warn: #fbbf24;
-    --color-good: #34d399;
+    --color-danger: #e8756a;
+    --color-danger-soft: #2e1a17;
+    --color-warn: #d9a13f;
+    --color-good: #86b578;
 
-    --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.45);
-    --shadow-button: 0 10px 20px rgba(23, 162, 148, 0.20);
+    --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.4);
+    --shadow-button: 0 6px 16px rgba(217, 116, 63, 0.22);
   }
 }
 
@@ -152,7 +165,7 @@ body {
 /* Focus ring matching the original --focus-ring token. */
 :where(a, button, input, select, textarea):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(11, 111, 102, 0.16);
+  box-shadow: 0 0 0 4px rgba(168, 85, 43, 0.16);
 }
 
 @media (prefers-reduced-motion: reduce) {
