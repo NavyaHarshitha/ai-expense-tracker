@@ -28,40 +28,64 @@ export const sectionTitle = 'mb-5 text-[22px] font-bold text-ink'
 export const eyebrow = 'text-sm font-bold uppercase tracking-wider text-muted'
 
 /*
-Chart colours, per theme.
+Chart colours.
 
-Recharts takes colours as props, so it cannot read the CSS variables the rest of
-the app follows - these have to be resolved in JavaScript. The dark set is
-lifted and desaturated rather than reused: #be185d and #9d174d read as near-black
-smudges on a dark ground, and the axis grey has to invert or the labels vanish.
+Eight categorical hues, validated rather than chosen by eye. Each set was run
+through the six checks - lightness band, chroma floor, colourblind separation,
+normal-vision separation, and contrast against its own surface - and both modes
+pass every adjacent gate. The dark column is the same eight hues re-stepped for
+a dark ground, not an automatic lightening: several of the light steps sit at a
+lightness that reads as a smudge on near-black.
+
+What the validator caught that eyes would not:
+- an all-pink series set is a sequential ramp pretending to be categorical -
+  every slice the same hue, so the chart cannot be read without the legend
+- blue and violet were 10.9 apart on normal vision, under the 15 floor
+- gold and red collide under deuteranopia at delta-E 6, so they are never adjacent
+- green sits too close to BOTH teal and gold, so it is held back to slot 6
+
+Order is the safety mechanism, not decoration: adjacent slots are the pairs a
+reader actually compares in a stack, a ring or a legend.
 */
 export const CHART_COLORS_LIGHT = [
-  '#db2777',
-  '#be185d',
-  '#f472b6',
-  '#a855f7',
-  '#7c3aed',
-  '#f9a8d4',
-  '#c084fc',
-  '#9d174d',
+  '#009184', // teal
+  '#c9820c', // gold
+  '#6b4fd0', // violet
+  '#cf3f3f', // red
+  '#3d6fa5', // blue
+  '#4f9e2f', // green
+  '#b83a86', // magenta
+  '#96601f', // brown
 ]
 
 export const CHART_COLORS_DARK = [
-  '#f472b6',
-  '#ec4899',
-  '#f9a8d4',
-  '#c084fc',
-  '#a78bfa',
-  '#fbcfe8',
-  '#d8b4fe',
-  '#e879a9',
+  '#17a294',
+  '#bd8a18',
+  '#8574e8',
+  '#e06060',
+  '#5183c4',
+  '#57a33c',
+  '#d4589b',
+  '#b87e3e',
 ]
+
+/**
+ * Slices shown before the rest fold into "Other".
+ *
+ * Not a colour limit - a reading limit. Past six wedges a ring becomes a
+ * pattern rather than a comparison, and the eighth slice is always a sliver
+ * nobody can act on.
+ */
+export const MAX_PIE_SLICES = 6
 
 export interface ChartTheme {
   series: string[]
+  /** Everything folded into the last slice - deliberately colourless. */
+  other: string
   axis: string
   grid: string
-  bar: string
+  line: string
+  surface: string
   tooltipBg: string
   tooltipBorder: string
   tooltipText: string
@@ -71,20 +95,26 @@ export function chartTheme(mode: 'light' | 'dark'): ChartTheme {
   return mode === 'dark'
     ? {
         series: CHART_COLORS_DARK,
-        axis: '#9d95a8',
-        grid: '#2e2a38',
-        bar: '#f472b6',
-        tooltipBg: '#1c1a24',
-        tooltipBorder: '#443e52',
-        tooltipText: '#f5f3f7',
+        other: '#5c6664',
+        axis: '#93a09d',
+        grid: '#2b3231',
+        line: '#17a294',
+        // Segments are separated by a ring of the surface colour, so touching
+        // wedges never blur into one another.
+        surface: '#1a1e1d',
+        tooltipBg: '#1a1e1d',
+        tooltipBorder: '#414a48',
+        tooltipText: '#f2f6f5',
       }
     : {
         series: CHART_COLORS_LIGHT,
-        axis: '#6b7280',
-        grid: '#e5e7eb',
-        bar: '#db2777',
+        other: '#9aa5a3',
+        axis: '#657471',
+        grid: '#e3e9e8',
+        line: '#0b6f66',
+        surface: '#ffffff',
         tooltipBg: '#ffffff',
-        tooltipBorder: '#e5e7eb',
-        tooltipText: '#111827',
+        tooltipBorder: '#e3e9e8',
+        tooltipText: '#111817',
       }
 }

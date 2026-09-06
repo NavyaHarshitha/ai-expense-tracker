@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import {
-  Bar,
-  BarChart,
+  CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -21,7 +22,7 @@ import {
   monthSummary,
   type InsightTone,
 } from '../lib/insights'
-import { chartTheme, card, eyebrow, sectionTitle } from '../lib/ui'
+import { MAX_PIE_SLICES, chartTheme, card, eyebrow, sectionTitle } from '../lib/ui'
 
 const TONE_STYLES: Record<InsightTone, { border: string; label: string; text: string }> = {
   warn: { border: 'border-l-danger', label: 'Watch', text: 'text-danger' },
@@ -50,6 +51,29 @@ export function Dashboard() {
       }),
     [tracks, transactions, today, result],
   )
+
+  /*
+  Past six wedges a ring stops being a comparison and becomes a pattern, and the
+  eighth slice is a sliver nobody can act on. The remainder folds into one
+  colourless "Other" rather than being dropped - the total still adds up.
+  */
+  const slices = useMemo(() => {
+    if (breakdown.length <= MAX_PIE_SLICES) return breakdown
+
+    const shown = breakdown.slice(0, MAX_PIE_SLICES - 1)
+    const rest = breakdown.slice(MAX_PIE_SLICES - 1)
+
+    return [
+      ...shown,
+      {
+        name: `Other (${rest.length})`,
+        valueMinor: rest.reduce((sum, s) => sum + s.valueMinor, 0),
+        share: rest.reduce((sum, s) => sum + s.share, 0),
+      },
+    ]
+  }, [breakdown])
+
+  const isOther = (i: number) => slices.length > MAX_PIE_SLICES - 1 && i === slices.length - 1
 
   const monthName = today.toLocaleString('en-IN', { month: 'long', year: 'numeric' })
 
@@ -107,16 +131,21 @@ export function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={breakdown.map((s) => ({ name: s.name, value: s.valueMinor }))}
+                  data={slices.map((s) => ({ name: s.name, value: s.valueMinor }))}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius="52%"
-                  outerRadius="82%"
-                  paddingAngle={2}
-                  strokeWidth={0}
+                  innerRadius="54%"
+                  outerRadius="84%"
+                  paddingAngle={1}
+                  /* A 2px ring of the surface, so touching wedges never blur together. */
+                  stroke={chart.surface}
+                  strokeWidth={2}
                 >
-                  {breakdown.map((_, i) => (
-                    <Cell key={i} fill={chart.series[i % chart.series.length]} />
+                  {slices.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={isOther(i) ? chart.other : chart.series[i % chart.series.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip
@@ -137,12 +166,14 @@ export function Dashboard() {
 
           {/* A legend that carries the numbers, so the chart isn't the only source of truth. */}
           <ul className="m-0 mt-4 grid list-none gap-2 p-0">
-            {breakdown.slice(0, 6).map((slice, i) => (
+            {slices.map((slice, i) => (
               <li key={slice.name} className="flex items-center gap-3 text-sm">
                 <span
                   aria-hidden="true"
                   className="h-3 w-3 shrink-0 rounded-full"
-                  style={{ background: chart.series[i % chart.series.length] }}
+                  style={{
+                    background: isOther(i) ? chart.other : chart.series[i % chart.series.length],
+                  }}
                 />
                 <span className="flex-1 text-ink">{slice.name}</span>
                 <span className="tnum font-bold text-ink">{formatINR(slice.valueMinor)}</span>
@@ -160,7 +191,8 @@ export function Dashboard() {
 
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+              <LineChart data={series} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                <CartesianGrid stroke={chart.grid} strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="label"
                   tick={{ fontSize: 11, fill: chart.axis }}
@@ -177,6 +209,8 @@ export function Dashboard() {
                 <Tooltip
                   formatter={(value) => formatINR(Number(value))}
                   labelFormatter={(l) => `Day ${l}`}
+                  /* A crosshair is what makes a line chart readable at a glance. */
+                  cursor={{ stroke: chart.axis, strokeWidth: 1, strokeDasharray: '3 3' }}
                   contentStyle={{
                     borderRadius: 10,
                     background: chart.tooltipBg,
@@ -187,14 +221,22 @@ export function Dashboard() {
                   itemStyle={{ color: chart.tooltipText }}
                   labelStyle={{ color: chart.tooltipText }}
                 />
-                <Bar dataKey="spentMinor" fill={chart.bar} radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="spentMinor"
+                  stroke={chart.line}
+                  strokeWidth={2}
+                  /* Dots only once the month is short enough for them to be distinct. */
+                  dot={series.length <= 20 ? { r: 3, fill: chart.line, strokeWidth: 0 } : false}
+                  activeDot={{ r: 5, fill: chart.line, stroke: chart.surface, strokeWidth: 2 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
 
           <p className="m-0 mt-4 text-sm text-muted">
-            Each bar is one day of {monthName.split(' ')[0]}, discretionary spending only. Gaps
-            are days you spent nothing.
+            Daily discretionary spending across {monthName.split(' ')[0]}. Points on the
+            baseline are days you spent nothing.
           </p>
         </section>
       </div>

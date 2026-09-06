@@ -4,28 +4,28 @@
 The original design tokens from styles.css, registered as Tailwind theme values.
 
 This is why the app can use Tailwind utilities and still look like the design
-that was already there: `bg-primary` is #db2777, `bg-canvas` is the slate-50
+that was already there: `bg-primary` is the teal #0b6f66, `bg-canvas` is the
 page background, `shadow-card` is the same soft shadow. One palette, expressed
 as utilities instead of hand-written classes.
 */
 @theme {
-  --color-primary: #db2777;
-  --color-primary-dark: #be185d;
-  --color-primary-soft: #fdf2f8;
-  --color-primary-edge: #f9a8d4;
+  --color-primary: #0b6f66;
+  --color-primary-dark: #075c54;
+  --color-primary-soft: #e6f4f2;
+  --color-primary-edge: #93cfc7;
 
-  --color-lavender: #f5f3ff;
-  --color-lavender-soft: #faf5ff;
+  --color-lavender: #e8f1f0;
+  --color-lavender-soft: #f2f8f7;
 
-  --color-canvas: #f8fafc;
+  --color-canvas: #f7f9f8;
   --color-surface: #ffffff;
-  --color-ink: #111827;
-  --color-ink-soft: #374151;
-  --color-muted: #6b7280;
-  --color-line: #e5e7eb;
-  --color-line-strong: #d1d5db;
+  --color-ink: #111817;
+  --color-ink-soft: #374442;
+  --color-muted: #657471;
+  --color-line: #e3e9e8;
+  --color-line-strong: #cdd6d4;
   /* Table headers, footers and other faintly-raised strips. */
-  --color-surface-2: #f9fafb;
+  --color-surface-2: #f2f5f4;
 
   --color-danger: #dc2626;
   /* Tinted background behind a destructive action or an error. */
@@ -40,7 +40,7 @@ as utilities instead of hand-written classes.
   --radius-field: 10px;
 
   --shadow-card: 0 12px 28px rgba(17, 24, 39, 0.08);
-  --shadow-button: 0 10px 20px rgba(219, 39, 119, 0.22);
+  --shadow-button: 0 10px 20px rgba(11, 111, 102, 0.22);
 }
 
 
@@ -56,29 +56,29 @@ Only the tokens are redefined - every bg-surface, text-ink and border-line in
 the app follows automatically, which is the whole reason the palette was written
 as variables in the first place.
 
-The pinks lighten rather than staying put: #db2777 is legible on white and muddy
-on near-black, so primary brightens and primary-dark - which is used for
-emphasis, not for depth - brightens further still.
+The teals lighten rather than staying put: #0b6f66 is legible on white and muddy
+on near-black, so primary brightens to #17a294 and primary-dark - which is used
+for emphasis, not for depth - brightens further still.
 */
 @layer theme {
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-      --color-primary: #f472b6;
-      --color-primary-dark: #f9a8d4;
-      --color-primary-soft: #2e1c28;
-      --color-primary-edge: #7d3350;
+      --color-primary: #17a294;
+      --color-primary-dark: #4fc9ba;
+      --color-primary-soft: #10302d;
+      --color-primary-edge: #2f6b64;
 
-      --color-lavender: #241f33;
-      --color-lavender-soft: #1e1a2b;
+      --color-lavender: #1e2a29;
+      --color-lavender-soft: #18201f;
 
-      --color-canvas: #131119;
-      --color-surface: #1c1a24;
-      --color-surface-2: #232030;
-      --color-ink: #f5f3f7;
-      --color-ink-soft: #cfc9d8;
-      --color-muted: #9d95a8;
-      --color-line: #2e2a38;
-      --color-line-strong: #443e52;
+      --color-canvas: #111413;
+      --color-surface: #1a1e1d;
+      --color-surface-2: #222726;
+      --color-ink: #f2f6f5;
+      --color-ink-soft: #c8d2d0;
+      --color-muted: #93a09d;
+      --color-line: #2b3231;
+      --color-line-strong: #414a48;
 
       --color-danger: #f87171;
       --color-danger-soft: #2b1618;
@@ -87,27 +87,27 @@ emphasis, not for depth - brightens further still.
 
       /* A shadow does not read on a dark ground; the border carries the edge. */
       --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.45);
-      --shadow-button: 0 10px 20px rgba(244, 114, 182, 0.18);
+      --shadow-button: 0 10px 20px rgba(23, 162, 148, 0.20);
     }
   }
 
   :root[data-theme='dark'] {
-    --color-primary: #f472b6;
-    --color-primary-dark: #f9a8d4;
-    --color-primary-soft: #2e1c28;
-    --color-primary-edge: #7d3350;
+    --color-primary: #17a294;
+    --color-primary-dark: #4fc9ba;
+    --color-primary-soft: #10302d;
+    --color-primary-edge: #2f6b64;
 
-    --color-lavender: #241f33;
-    --color-lavender-soft: #1e1a2b;
+    --color-lavender: #1e2a29;
+    --color-lavender-soft: #18201f;
 
-    --color-canvas: #131119;
-    --color-surface: #1c1a24;
-    --color-surface-2: #232030;
-    --color-ink: #f5f3f7;
-    --color-ink-soft: #cfc9d8;
-    --color-muted: #9d95a8;
-    --color-line: #2e2a38;
-    --color-line-strong: #443e52;
+    --color-canvas: #111413;
+    --color-surface: #1a1e1d;
+    --color-surface-2: #222726;
+    --color-ink: #f2f6f5;
+    --color-ink-soft: #c8d2d0;
+    --color-muted: #93a09d;
+    --color-line: #2b3231;
+    --color-line-strong: #414a48;
 
     --color-danger: #f87171;
     --color-danger-soft: #2b1618;
@@ -115,7 +115,7 @@ emphasis, not for depth - brightens further still.
     --color-good: #34d399;
 
     --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.45);
-    --shadow-button: 0 10px 20px rgba(244, 114, 182, 0.18);
+    --shadow-button: 0 10px 20px rgba(23, 162, 148, 0.20);
   }
 }
 
@@ -152,7 +152,7 @@ body {
 /* Focus ring matching the original --focus-ring token. */
 :where(a, button, input, select, textarea):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(219, 39, 119, 0.14);
+  box-shadow: 0 0 0 4px rgba(11, 111, 102, 0.16);
 }
 
 @media (prefers-reduced-motion: reduce) {
