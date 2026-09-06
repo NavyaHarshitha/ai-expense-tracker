@@ -101,26 +101,26 @@ export function chartTheme(mode: 'light' | 'dark'): ChartTheme {
   return mode === 'dark'
     ? {
         series: CHART_COLORS_DARK,
-        other: '#6b6058',
-        axis: '#a19385',
-        grid: '#362e28',
-        line: '#d9743f',
+        other: '#8c82a3',
+        axis: '#a196b5',
+        grid: '#413a56',
+        line: '#c9a4f0',
         // Segments are separated by a ring of the surface colour, so touching
         // wedges never blur into one another.
-        surface: '#221d19',
-        tooltipBg: '#221d19',
-        tooltipBorder: '#4b4037',
-        tooltipText: '#f5efe8',
+        surface: '#302b3f',
+        tooltipBg: '#302b3f',
+        tooltipBorder: '#564d6e',
+        tooltipText: '#f3eefa',
       }
     : {
         series: CHART_COLORS_LIGHT,
-        other: '#a89a8c',
-        axis: '#8a7d72',
-        grid: '#e8ded2',
-        line: '#a8552b',
-        surface: '#fffdfa',
-        tooltipBg: '#fffdfa',
-        tooltipBorder: '#e8ded2',
-        tooltipText: '#2b2420',
+        other: '#b3a3a8',
+        axis: '#8d7a83',
+        grid: '#f0ddd8',
+        line: '#a8446a',
+        surface: '#fffaf7',
+        tooltipBg: '#fffaf7',
+        tooltipBorder: '#f0ddd8',
+        tooltipText: '#2e2229',
       }
 }

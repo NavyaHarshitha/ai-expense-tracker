@@ -9,23 +9,23 @@ page background, `shadow-card` is the same soft shadow. One palette, expressed
 as utilities instead of hand-written classes.
 */
 @theme {
-  --color-primary: #a8552b;
-  --color-primary-dark: #8a4321;
-  --color-primary-soft: #f7ece3;
-  --color-primary-edge: #e0bfa6;
+  --color-primary: #a8446a;
+  --color-primary-dark: #8a3355;
+  --color-primary-soft: #fdeef3;
+  --color-primary-edge: #eebfd0;
 
-  --color-lavender: #f0e7db;
-  --color-lavender-soft: #f7f1e8;
+  --color-lavender: #f6e9e4;
+  --color-lavender-soft: #fdf5ee;
 
-  --color-canvas: #faf6f1;
-  --color-surface: #fffdfa;
-  --color-ink: #2b2420;
-  --color-ink-soft: #574c44;
-  --color-muted: #8a7d72;
-  --color-line: #e8ded2;
-  --color-line-strong: #d5c7b8;
+  --color-canvas: #fdf3ea;
+  --color-surface: #fffaf7;
+  --color-ink: #2e2229;
+  --color-ink-soft: #5b4a53;
+  --color-muted: #8d7a83;
+  --color-line: #f0ddd8;
+  --color-line-strong: #e0c6c3;
   /* Table headers, footers and other faintly-raised strips. */
-  --color-surface-2: #f4ede4;
+  --color-surface-2: #fdf0e8;
 
   --color-danger: #b3392f;
   /* Tinted background behind a destructive action or an error. */
@@ -42,7 +42,7 @@ as utilities instead of hand-written classes.
   --radius-field: 12px;
 
   --shadow-card: 0 8px 24px rgba(84, 62, 44, 0.07);
-  --shadow-button: 0 6px 16px rgba(168, 85, 43, 0.18);
+  --shadow-button: 0 6px 16px rgba(168, 68, 106, 0.20);
 }
 
 
@@ -76,59 +76,59 @@ not for depth - brightens further still.
 @layer theme {
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-      --color-primary: #d9743f;
-      --color-primary-dark: #e8a077;
-      --color-primary-soft: #2e2018;
-      --color-primary-edge: #6b4a33;
+      --color-primary: #c9a4f0;
+      --color-primary-dark: #dcc2f7;
+      --color-primary-soft: #393250;
+      --color-primary-edge: #6b5c8f;
 
-      --color-lavender: #2b241f;
-      --color-lavender-soft: #221d19;
+      --color-lavender: #3a3350;
+      --color-lavender-soft: #332d47;
 
-      --color-canvas: #191512;
-      --color-surface: #221d19;
-      --color-surface-2: #2b241f;
-      --color-ink: #f5efe8;
-      --color-ink-soft: #d6cabd;
-      --color-muted: #a19385;
-      --color-line: #362e28;
-      --color-line-strong: #4b4037;
+      --color-canvas: #262233;
+      --color-surface: #302b3f;
+      --color-surface-2: #3a3450;
+      --color-ink: #f3eefa;
+      --color-ink-soft: #d3cae3;
+      --color-muted: #a196b5;
+      --color-line: #413a56;
+      --color-line-strong: #564d6e;
 
-      --color-danger: #e8756a;
-      --color-danger-soft: #2e1a17;
-      --color-warn: #d9a13f;
-      --color-good: #86b578;
+      --color-danger: #f08a8a;
+      --color-danger-soft: #3d2836;
+      --color-warn: #e0b45c;
+      --color-good: #8fd0a0;
 
       /* A shadow does not read on a dark ground; the border carries the edge. */
       --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.4);
-      --shadow-button: 0 6px 16px rgba(217, 116, 63, 0.22);
+      --shadow-button: 0 6px 16px rgba(201, 164, 240, 0.20);
     }
   }
 
   :root[data-theme='dark'] {
-    --color-primary: #d9743f;
-    --color-primary-dark: #e8a077;
-    --color-primary-soft: #2e2018;
-    --color-primary-edge: #6b4a33;
+    --color-primary: #c9a4f0;
+    --color-primary-dark: #dcc2f7;
+    --color-primary-soft: #393250;
+    --color-primary-edge: #6b5c8f;
 
-    --color-lavender: #2b241f;
-    --color-lavender-soft: #221d19;
+    --color-lavender: #3a3350;
+    --color-lavender-soft: #332d47;
 
-    --color-canvas: #191512;
-    --color-surface: #221d19;
-    --color-surface-2: #2b241f;
-    --color-ink: #f5efe8;
-    --color-ink-soft: #d6cabd;
-    --color-muted: #a19385;
-    --color-line: #362e28;
-    --color-line-strong: #4b4037;
+    --color-canvas: #262233;
+    --color-surface: #302b3f;
+    --color-surface-2: #3a3450;
+    --color-ink: #f3eefa;
+    --color-ink-soft: #d3cae3;
+    --color-muted: #a196b5;
+    --color-line: #413a56;
+    --color-line-strong: #564d6e;
 
-    --color-danger: #e8756a;
-    --color-danger-soft: #2e1a17;
-    --color-warn: #d9a13f;
-    --color-good: #86b578;
+    --color-danger: #f08a8a;
+    --color-danger-soft: #3d2836;
+    --color-warn: #e0b45c;
+    --color-good: #8fd0a0;
 
     --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.4);
-    --shadow-button: 0 6px 16px rgba(217, 116, 63, 0.22);
+    --shadow-button: 0 6px 16px rgba(201, 164, 240, 0.20);
   }
 }
 
@@ -148,10 +148,31 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Dark keeps the wash, in lavender rather than blush. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body {
+    background-image: linear-gradient(155deg, #2c2740 0%, #262233 55%, #2a2438 100%);
+  }
+}
+
+:root[data-theme='dark'] body {
+  background-image: linear-gradient(155deg, #2c2740 0%, #262233 55%, #2a2438 100%);
+}
+
 body {
   margin: 0;
-  /* Explicit, so the page never borrows the host's ground. */
+  /*
+  A gradient ground rather than a flat fill - butter yellow easing into blush in
+  light, and a lifted lavender in dark. The solid token stays as the fallback
+  and as what cards and charts are measured against; only the page itself is a
+  wash, so nothing that needs a known background sits on top of a moving colour.
+
+  Fixed attachment so the wash belongs to the window rather than scrolling away
+  and leaving a flat band under a long ledger.
+  */
   background: var(--color-canvas);
+  background-image: linear-gradient(155deg, #fdf6e3 0%, #fdf1ea 45%, #fbe9f0 100%);
+  background-attachment: fixed;
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.6;
@@ -165,7 +186,7 @@ body {
 /* Focus ring matching the original --focus-ring token. */
 :where(a, button, input, select, textarea):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(168, 85, 43, 0.16);
+  box-shadow: 0 0 0 4px rgba(168, 68, 106, 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {
