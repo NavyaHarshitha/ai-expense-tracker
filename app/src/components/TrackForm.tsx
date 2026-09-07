@@ -8,7 +8,8 @@ const TYPES: TrackType[] = ['spending', 'commitment', 'goal', 'project']
 
 const HINTS: Record<TrackType, string> = {
   spending: 'Resets every month. Daily Expenses, Eating Out.',
-  commitment: 'Known amount on a known day, reserved up front. EMI, rent, Netflix.',
+  commitment:
+    'Known amount on a known day, reserved up front. EMI, rent, a SIP. Repeats every month, so one track covers every month.',
   goal: 'Accumulates toward a target. Emergency Fund.',
   project: 'Date-bounded: saves, then spends down, then closes. A trip.',
 }

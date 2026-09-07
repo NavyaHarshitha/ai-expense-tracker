@@ -146,10 +146,42 @@ export function Home() {
           </Link>
         </div>
 
+        {/*
+        These must agree with Safe-to-Spend, which reserves only what has NOT
+        gone out yet. Showing the full committed total here while the hero
+        reserved the unpaid remainder gave two different answers to the same
+        question - and the bigger one looked alarming for no reason.
+        */}
         <dl className="grid gap-4 sm:grid-cols-3">
-          <Stat label="Income" value={formatINR(result.incomeMinor)} />
-          <Stat label="Committed" value={formatINR(result.committedMinor)} />
-          <Stat label="Into savings" value={formatINR(result.plannedSavingsMinor)} />
+          {result.basis === 'balance' ? (
+            <>
+              <Stat label="In your accounts" value={formatINR(result.cashMinor)} />
+              <Stat
+                label="Commitments still due"
+                value={formatINR(result.committedRemainingMinor)}
+                hint={
+                  result.committedMinor > result.committedRemainingMinor
+                    ? `${formatINR(result.committedMinor - result.committedRemainingMinor)} already paid`
+                    : undefined
+                }
+              />
+              <Stat
+                label="Savings still to move"
+                value={formatINR(result.savingsRemainingMinor)}
+                hint={
+                  result.plannedSavingsMinor > result.savingsRemainingMinor
+                    ? `${formatINR(result.plannedSavingsMinor - result.savingsRemainingMinor)} already moved`
+                    : undefined
+                }
+              />
+            </>
+          ) : (
+            <>
+              <Stat label="Income" value={formatINR(result.incomeMinor)} />
+              <Stat label="Committed" value={formatINR(result.committedMinor)} />
+              <Stat label="Into savings" value={formatINR(result.plannedSavingsMinor)} />
+            </>
+          )}
         </dl>
       </section>
 
@@ -157,7 +189,9 @@ export function Home() {
         <section>
           <h2 className={sectionTitle}>Commitments</h2>
           <p className="-mt-3 mb-4 text-muted">
-            Reserved before anything else, so they can never be accidentally spent.
+            Reserved before anything else, so they can never be accidentally spent. Each one
+            repeats every month &mdash; there is no need for a separate track for next
+            month&rsquo;s rent.
           </p>
           <TrackList {...listProps} only={['commitment']} />
         </section>
@@ -211,11 +245,14 @@ export function Home() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className={`${card} p-4`}>
       <dt className="mb-2 font-bold text-muted">{label}</dt>
-      <dd className="tnum m-0 text-3xl font-bold text-ink">{value}</dd>
+      <dd className="m-0">
+        <span className="tnum block text-3xl font-bold text-ink">{value}</span>
+        {hint && <span className="mt-1 block text-sm text-muted">{hint}</span>}
+      </dd>
     </div>
   )
 }
