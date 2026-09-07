@@ -153,6 +153,17 @@ export interface Profile {
   /** YYYY-MM-DD - the date the anchor figure was true. */
   balanceAnchorOn?: string
 
+  /**
+   * Day of the month the salary lands.
+   *
+   * This is what lets the app understand a financial month that does not start
+   * on the 1st. A commitment falling due BEFORE payday cannot be funded by that
+   * month's salary - it has to come out of the previous month's money - so it
+   * must be held back a cycle early rather than reserved in the month it is
+   * dated.
+   */
+  paydayDay?: number
+
   /** Set once, when the single balance anchor is migrated into an account. */
   accountsMigratedAt?: number
 

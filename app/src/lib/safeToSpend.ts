@@ -34,6 +34,8 @@ export interface SafeToSpendResult {
   committedRemainingMinor: number
   /** Planned savings this month not yet transferred. */
   savingsRemainingMinor: number
+  /** Held for commitments that fall due before the next salary. */
+  preSalaryHeldMinor: number
   incomeMinor: number
   committedMinor: number
   plannedSavingsMinor: number
@@ -170,6 +172,8 @@ export function commitmentsRemainingThisMonthMinor(
   tracks: Track[],
   transactions: Transaction[],
   ref: Date,
+  /** Day the salary lands. Enables pre-payday reserving; omit to disable. */
+  paydayDay?: number,
 ): number {
   let remaining = 0
 
@@ -178,6 +182,25 @@ export function commitmentsRemainingThisMonthMinor(
 
     const due = track.commitmentAmountMinor ?? 0
     if (due <= 0) continue
+
+    /*
+    A commitment due BEFORE payday is always funded a cycle early.
+
+    Rent on the 1st with a salary on the 5th cannot be paid by that month's
+    salary - it comes out of the previous month's money. So there is always
+    exactly ONE upcoming instance to hold back, whether or not this month's has
+    gone out: before the 1st it is this month's, after the 1st it is next
+    month's. Never zero, because the next one is always looming; never two,
+    because only one is ever next.
+
+    Without this the money frees up the moment rent clears and gets spent, and
+    the 1st arrives short - which is exactly what a second "next month rent"
+    track was compensating for by hand.
+    */
+    if (paydayDay !== undefined && track.dueDay !== undefined && track.dueDay < paydayDay) {
+      remaining += due
+      continue
+    }
 
     const paid = transactions
       .filter(
@@ -231,6 +254,8 @@ export function computeSafeToSpend(args: {
   tracks: Track[]
   transactions: Transaction[]
   today: Date
+  /** Day the salary lands, so pre-payday commitments are held a cycle early. */
+  paydayDay?: number
   /**
    * Cash across accounts. When given, this is the basis instead of income -
    * real money rather than an assumption that the salary arrived and the month
@@ -240,14 +265,20 @@ export function computeSafeToSpend(args: {
   /** Owed on credit cards, subtracted as the liability it is. */
   owedMinor?: number
 }): SafeToSpendResult {
-  const { monthlyIncomeMinor, tracks, transactions, today, cashMinor, owedMinor } = args
+  const { monthlyIncomeMinor, tracks, transactions, today, paydayDay, cashMinor, owedMinor } =
+    args
 
   const committedMinor = committedThisMonthMinor(tracks)
   const plannedSavingsMinor = plannedSavingsThisMonthMinor(tracks)
   const spentMinor = spentThisMonthMinor(transactions, tracks, today)
   const spentTodayMinor = spentOnDayMinor(transactions, tracks, today)
 
-  const committedRemainingMinor = commitmentsRemainingThisMonthMinor(tracks, transactions, today)
+  const committedRemainingMinor = commitmentsRemainingThisMonthMinor(
+    tracks,
+    transactions,
+    today,
+    paydayDay,
+  )
   const savingsRemainingMinor = savingsRemainingThisMonthMinor(tracks, transactions, today)
 
   /*
@@ -301,8 +332,20 @@ export function computeSafeToSpend(args: {
   // money can be un-spent.
   const leftTodayMinor = Math.max(0, todayAllowanceMinor - spentTodayMinor)
 
+  /* Reported separately so the held money is visible rather than just missing. */
+  const preSalaryHeldMinor =
+    paydayDay === undefined
+      ? 0
+      : activeTracks(tracks)
+          .filter(
+            (t) =>
+              t.type === 'commitment' && t.dueDay !== undefined && t.dueDay < paydayDay,
+          )
+          .reduce((sum, t) => sum + (t.commitmentAmountMinor ?? 0), 0)
+
   return {
     basis,
+    preSalaryHeldMinor,
     cashMinor: cash,
     owedMinor: owed,
     committedRemainingMinor,

@@ -43,6 +43,8 @@ export interface AppContext {
   softDelete: (uid: string, id: string) => Promise<void>
   setIncome: (uid: string, minor: number) => Promise<void>
   setBalanceAnchor: (uid: string, minor: number, on: string) => Promise<void>
+  paydayDay?: number
+  setPayday: (uid: string, day: number | null) => Promise<void>
   createCategory: (uid: string, name: string, from?: Category['createdFrom']) => Promise<void>
   renameCategory: (uid: string, category: Category, name: string) => Promise<{ rowsUpdated: number }>
   archiveCategory: (uid: string, id: string) => Promise<void>
@@ -84,7 +86,9 @@ export default function App() {
     balanceAnchorOn,
     categoriesSeeded,
     accountsMigrated,
+    paydayDay,
     setIncome,
+    setPayday,
     setBalanceAnchor,
   } = useProfile(uid)
 
@@ -141,6 +145,7 @@ export default function App() {
         tracks,
         transactions,
         today,
+        paydayDay,
         /*
         Real money wins when it exists. Passing undefined - not zero - when
         there are no accounts is what selects the income fallback; zero would
@@ -153,7 +158,7 @@ export default function App() {
             }
           : {}),
       }),
-    [monthlyIncomeMinor, tracks, transactions, today, accounts.length, accountsSummary],
+    [monthlyIncomeMinor, tracks, transactions, today, paydayDay, accounts.length, accountsSummary],
   )
 
   if (authLoading) {
@@ -185,6 +190,8 @@ export default function App() {
     softDelete,
     setIncome,
     setBalanceAnchor,
+    paydayDay,
+    setPayday,
     createCategory,
     renameCategory,
     archiveCategory,

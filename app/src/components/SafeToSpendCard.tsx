@@ -10,10 +10,14 @@ total spent is a rear-view mirror, safe-to-spend is a decision.
 */
 export function SafeToSpendCard({
   result,
+  paydayDay,
   onIncomeChange,
+  onPaydayChange,
 }: {
   result: SafeToSpendResult
+  paydayDay?: number
   onIncomeChange: (minor: number) => void
+  onPaydayChange: (day: number | null) => void
 }) {
   const overspent = result.safeToSpendMinor < 0
   const dayExhausted =
@@ -130,7 +134,14 @@ export function SafeToSpendCard({
           <>
             <Row label="In your accounts" value={result.cashMinor} />
             {result.owedMinor > 0 && <Row label="Owed on cards" value={-result.owedMinor} />}
-            <Row label="Commitments still due" value={-result.committedRemainingMinor} />
+            <Row
+              label={
+                result.preSalaryHeldMinor > 0
+                  ? 'Commitments due, incl. pre-payday'
+                  : 'Commitments still due'
+              }
+              value={-result.committedRemainingMinor}
+            />
             <Row label="Savings still to move" value={-result.savingsRemainingMinor} />
           </>
         ) : (
@@ -165,6 +176,42 @@ export function SafeToSpendCard({
         )}
       </dl>
 
+      {/*
+      Say WHY the money is missing. Held-back cash that just disappears from the
+      figure looks like a bug; named, it looks like the protection it is.
+      */}
+      {result.preSalaryHeldMinor > 0 && (
+        <p className="mt-4 mb-0 rounded-field bg-primary-soft px-4 py-3 text-sm text-ink-soft">
+          <strong className="tnum">{formatINR(result.preSalaryHeldMinor)}</strong> of that is held
+          for bills that fall due before your salary on the {paydayDay}
+          {ordinal(paydayDay)} &mdash; they come out of this month&rsquo;s money, not next
+          month&rsquo;s, so it stays reserved even once this month&rsquo;s have been paid.
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted">
+        <label htmlFor="payday">Salary lands on day</label>
+        <input
+          id="payday"
+          className="tnum w-16 rounded border border-line-strong bg-surface px-2 py-1 text-right text-ink"
+          type="number"
+          min="1"
+          max="31"
+          defaultValue={paydayDay ?? ''}
+          placeholder="—"
+          onBlur={(e) => {
+            const raw = e.target.value.trim()
+            onPaydayChange(raw === '' ? null : Number(raw))
+          }}
+        />
+        <span>of the month</span>
+        {paydayDay === undefined && (
+          <span className="text-warn">
+            Set this and bills due before payday get held back a month early.
+          </span>
+        )}
+      </div>
+
       <p className="mt-4 mb-0 text-sm text-muted">
         {result.basis === 'balance' ? (
           <>
@@ -182,6 +229,14 @@ export function SafeToSpendCard({
       </p>
     </section>
   )
+}
+
+function ordinal(day?: number): string {
+  if (day === undefined) return ''
+  if (day % 10 === 1 && day !== 11) return 'st'
+  if (day % 10 === 2 && day !== 12) return 'nd'
+  if (day % 10 === 3 && day !== 13) return 'rd'
+  return 'th'
 }
 
 function Row({ label, value }: { label: string; value: number }) {

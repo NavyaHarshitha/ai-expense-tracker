@@ -4,6 +4,7 @@ import {
   computeSafeToSpend,
   daysRemainingInMonth,
   isInMonth,
+  commitmentsRemainingThisMonthMinor,
   isSameDay,
   spentThisMonthMinor,
 } from './safeToSpend'
@@ -482,5 +483,96 @@ describe('Safe-to-Spend from the account balance', () => {
     const r = fromBalance([], toPaise(1000))
     expect(r.safeToSpendMinor).toBeLessThan(0)
     expect(r.leftTodayMinor).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Pre-payday commitments: Navya's real rhythm
+// ---------------------------------------------------------------------------
+
+describe('bills that fall due before payday are held a cycle early', () => {
+  // Salary on the 5th. Rent and a SIP leave on the 1st, so they can only be
+  // funded by the PREVIOUS month's money - Rs 30,000 has to stay held back
+  // permanently or the 1st arrives short.
+  const PAYDAY = 5
+
+  const tks: Track[] = [
+    { id: 'rent', name: 'Rent', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(15000), dueDay: 1 },
+    { id: 'bandhan', name: 'Bandhan Small Cap', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(15000), dueDay: 1 },
+    { id: 'sbi', name: 'SBI Mutual Fund', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(6000), dueDay: 8 },
+    { id: 'daily', name: 'Daily', type: 'spending', archived: false, monthlyLimitMinor: toPaise(20000) },
+  ]
+
+  const t = (over: Partial<Transaction>): Transaction => ({
+    id: 'x', occurredOn: '2026-09-01', amountMinor: toPaise(15000),
+    movement: 'expense', trackId: 'rent', categoryName: 'Bills',
+    description: 'rent', paymentMethod: 'bank_transfer', source: 'manual',
+    createdAt: 0, deletedAt: null, ...over,
+  })
+
+  const SEP_10 = new Date(2026, 8, 10)
+
+  const remaining = (transactions: Transaction[], payday?: number) =>
+    commitmentsRemainingThisMonthMinor(tks, transactions, SEP_10, payday)
+
+  it('keeps holding rent even after this monthrsquos has been paid', () => {
+    // The whole point. Rent cleared on the 1st, but next month's 1st still
+    // needs funding from THIS month's salary - so the money must not free up.
+    const paid = [
+      t({ id: 'r', trackId: 'rent' }),
+      t({ id: 'b', trackId: 'bandhan' }),
+    ]
+    // Rs 30,000 still held, plus the Rs 6,000 SBI not yet paid.
+    expect(remaining(paid, PAYDAY)).toBe(toPaise(36000))
+  })
+
+  it('holds exactly one instance - never two, never none', () => {
+    // Before it is paid: one upcoming instance.
+    expect(remaining([], PAYDAY)).toBe(toPaise(36000))
+    // After: still one, the next month's.
+    expect(remaining([t({ id: 'r' }), t({ id: 'b', trackId: 'bandhan' })], PAYDAY)).toBe(
+      toPaise(36000),
+    )
+  })
+
+  it('frees up a post-payday commitment once it is paid, as before', () => {
+    // SBI is due on the 8th, after payday, so this month's salary covers it -
+    // no early holding, and paying it releases the reservation.
+    const paidSbi = [t({ id: 's', trackId: 'sbi', amountMinor: toPaise(6000), occurredOn: '2026-09-08' })]
+    expect(remaining(paidSbi, PAYDAY)).toBe(toPaise(30000))
+  })
+
+  it('does nothing without a payday set, so existing users are unaffected', () => {
+    const paid = [t({ id: 'r' }), t({ id: 'b', trackId: 'bandhan' })]
+    // No payday: rent and Bandhan are paid, so only SBI remains.
+    expect(remaining(paid)).toBe(toPaise(6000))
+  })
+
+  it('reports the held amount separately so it is visible, not just missing', () => {
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: toPaise(123802), tracks: tks,
+      transactions: [t({ id: 'r' }), t({ id: 'b', trackId: 'bandhan' })],
+      today: SEP_10, paydayDay: PAYDAY,
+      cashMinor: toPaise(90000), owedMinor: 0,
+    })
+    expect(r.preSalaryHeldMinor).toBe(toPaise(30000))
+    // 90,000 held - 36,000 reserved = 54,000 genuinely free.
+    expect(r.safeToSpendMinor).toBe(toPaise(54000))
+  })
+
+  it('ignores a commitment with no due day rather than guessing', () => {
+    const vague: Track[] = [
+      { id: 'v', name: 'Something', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(5000) },
+    ]
+    expect(commitmentsRemainingThisMonthMinor(vague, [], SEP_10, PAYDAY)).toBe(toPaise(5000))
+  })
+
+  it('treats a commitment due ON payday as covered by that salary', () => {
+    const onPayday: Track[] = [
+      { id: 'p', name: 'On payday', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(4000), dueDay: 5 },
+    ]
+    const paid = [t({ id: 'p1', trackId: 'p', amountMinor: toPaise(4000), occurredOn: '2026-09-05' })]
+    // dueDay 5 is not BEFORE payday 5, so paying it releases it.
+    expect(commitmentsRemainingThisMonthMinor(onPayday, paid, SEP_10, PAYDAY)).toBe(0)
   })
 })

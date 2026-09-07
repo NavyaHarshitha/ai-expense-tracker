@@ -11,6 +11,7 @@ export function useProfile(uid: string | undefined) {
   // undefined while loading, then true/false - so seeding never runs on a guess.
   const [categoriesSeeded, setCategoriesSeeded] = useState<boolean | undefined>(undefined)
   const [accountsMigrated, setAccountsMigrated] = useState<boolean | undefined>(undefined)
+  const [paydayDay, setPaydayDay] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function useProfile(uid: string | undefined) {
         setBalanceAnchorOn(data?.balanceAnchorOn ?? undefined)
         setCategoriesSeeded(Boolean(data?.categoriesSeededAt))
         setAccountsMigrated(Boolean(data?.accountsMigratedAt))
+        setPaydayDay(data?.paydayDay ?? undefined)
         setLoading(false)
       },
       () => setLoading(false),
@@ -49,6 +51,15 @@ export function useProfile(uid: string | undefined) {
    * This is reconciliation: everything before the date is forgotten and the
    * running total restarts from the asserted figure.
    */
+  /** Day of the month the salary lands. Drives pre-payday reserving. */
+  async function setPayday(uid: string, day: number | null) {
+    await setDoc(
+      doc(db, userPath(uid, 'settings'), 'profile'),
+      { paydayDay: day === null ? null : Math.min(31, Math.max(1, day)) },
+      { merge: true },
+    )
+  }
+
   async function setBalanceAnchor(uid: string, minor: number, on: string) {
     await setDoc(
       doc(db, userPath(uid, 'settings'), 'profile'),
@@ -63,8 +74,10 @@ export function useProfile(uid: string | undefined) {
     balanceAnchorOn,
     categoriesSeeded,
     accountsMigrated,
+    paydayDay,
     loading,
     setIncome,
+    setPayday,
     setBalanceAnchor,
   }
 }

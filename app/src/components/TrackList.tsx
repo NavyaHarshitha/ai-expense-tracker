@@ -201,6 +201,7 @@ export function TrackList({
   transactions,
   today,
   only,
+  paydayDay,
   editingId,
   onEdit,
   onRemove,
@@ -209,6 +210,8 @@ export function TrackList({
   tracks: Track[]
   transactions: Transaction[]
   today: Date
+  /** Day the salary lands, so a pre-payday commitment can say so. */
+  paydayDay?: number
   /** Render just one type - lets Home show commitments and tracks separately. */
   only?: TrackType[]
   editingId?: string | null
@@ -257,6 +260,11 @@ export function TrackList({
             <ul className="grid list-none gap-3 p-0 sm:grid-cols-2">
               {group.map((track) => {
                 const { used, total, caption } = progressFor(track, transactions, today)
+                const heldEarly =
+                  track.type === 'commitment' &&
+                  paydayDay !== undefined &&
+                  track.dueDay !== undefined &&
+                  track.dueDay < paydayDay
                 const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0
                 const over = total > 0 && used > total
 
@@ -334,7 +342,14 @@ export function TrackList({
                       </div>
                     )}
 
-                    <p className="m-0 mt-2 text-sm text-muted">{caption}</p>
+                    <p className="m-0 mt-2 text-sm text-muted">
+                      {caption}
+                      {heldEarly && (
+                        <span className="ml-2 font-bold text-primary-dark">
+                          · held from this month
+                        </span>
+                      )}
+                    </p>
                   </li>
                 )
               })}

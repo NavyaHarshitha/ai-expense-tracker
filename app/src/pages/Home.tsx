@@ -29,6 +29,8 @@ export function Home() {
     deleteTrack,
     reassignAndDeleteTrack,
     setIncome,
+    paydayDay,
+    setPayday,
     accountsSummary,
     createAccount,
     updateAccount,
@@ -102,6 +104,7 @@ export function Home() {
     tracks,
     transactions,
     today,
+    paydayDay,
     editingId: editing?.id ?? null,
     onEdit: startEdit,
     onRemove: removeTrack,
@@ -113,7 +116,12 @@ export function Home() {
 
   return (
     <div className="grid gap-8">
-      <SafeToSpendCard result={result} onIncomeChange={(minor) => setIncome(uid, minor)} />
+      <SafeToSpendCard
+        result={result}
+        paydayDay={paydayDay}
+        onIncomeChange={(minor) => setIncome(uid, minor)}
+        onPaydayChange={(day) => setPayday(uid, day)}
+      />
 
       <AccountsPanel
         summary={accountsSummary}
