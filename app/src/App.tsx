@@ -135,8 +135,25 @@ export default function App() {
 
   // Recomputed whenever Firestore pushes a change, or the day turns over.
   const result = useMemo(
-    () => computeSafeToSpend({ monthlyIncomeMinor, tracks, transactions, today }),
-    [monthlyIncomeMinor, tracks, transactions, today],
+    () =>
+      computeSafeToSpend({
+        monthlyIncomeMinor,
+        tracks,
+        transactions,
+        today,
+        /*
+        Real money wins when it exists. Passing undefined - not zero - when
+        there are no accounts is what selects the income fallback; zero would
+        read as "you have nothing" and show everything as overspent.
+        */
+        ...(accounts.length > 0
+          ? {
+              cashMinor: accountsSummary.totalCashMinor,
+              owedMinor: accountsSummary.totalOwedMinor,
+            }
+          : {}),
+      }),
+    [monthlyIncomeMinor, tracks, transactions, today, accounts.length, accountsSummary],
   )
 
   if (authLoading) {

@@ -379,3 +379,108 @@ describe('malformed dates cannot silently vanish money', () => {
     expect(isSameDay('2026-09-03T18:30:00Z', SEP_3)).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Balance basis: what you HOLD, not what you were paid
+// ---------------------------------------------------------------------------
+
+describe('Safe-to-Spend from the account balance', () => {
+  const tks: Track[] = [
+    { id: 'daily', name: 'Daily', type: 'spending', archived: false, monthlyLimitMinor: toPaise(20000) },
+    { id: 'rent', name: 'Rent', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(18000), dueDay: 5 },
+    { id: 'sip', name: 'SIP', type: 'commitment', archived: false, commitmentAmountMinor: toPaise(15000), dueDay: 15 },
+    { id: 'fund', name: 'Emergency Fund', type: 'goal', archived: false, plannedMonthlyMinor: toPaise(10000) },
+  ]
+
+  const SEP_10 = new Date(2026, 8, 10) // 21 days remaining
+
+  const t = (over: Partial<Transaction>): Transaction => ({
+    id: 'x', occurredOn: '2026-09-08', amountMinor: toPaise(1000),
+    movement: 'expense', trackId: 'daily', categoryName: 'Food',
+    description: 'x', paymentMethod: 'upi', source: 'manual',
+    createdAt: 0, deletedAt: null, ...over,
+  })
+
+  const fromBalance = (transactions: Transaction[], cash: number, owed = 0) =>
+    computeSafeToSpend({
+      monthlyIncomeMinor: toPaise(122300), tracks: tks, transactions,
+      today: SEP_10, cashMinor: cash, owedMinor: owed,
+    })
+
+  it('uses the balance, not the typed income', () => {
+    const r = fromBalance([], toPaise(80000))
+    expect(r.basis).toBe('balance')
+    // 80,000 held - 33,000 commitments still due - 10,000 savings still to move
+    expect(r.safeToSpendMinor).toBe(toPaise(37000))
+  })
+
+  it('does NOT subtract what has already been spent - the balance already did', () => {
+    // The double-count this basis exists to avoid. Spending Rs 5,000 lowers the
+    // balance; subtracting it again would deduct the same money twice.
+    const spent = [t({ amountMinor: toPaise(5000) })]
+    expect(fromBalance(spent, toPaise(75000)).safeToSpendMinor).toBe(toPaise(32000))
+  })
+
+  it('stops subtracting a commitment once it has actually been paid', () => {
+    // Rent went out: the balance dropped by 18,000, so it must not also be
+    // reserved. Otherwise rent is deducted twice.
+    const paidRent = [t({ trackId: 'rent', amountMinor: toPaise(18000), occurredOn: '2026-09-05' })]
+    const r = fromBalance(paidRent, toPaise(62000))
+    expect(r.committedRemainingMinor).toBe(toPaise(15000)) // only the SIP left
+    expect(r.safeToSpendMinor).toBe(toPaise(37000))
+  })
+
+  it('stops subtracting savings once they have been transferred', () => {
+    const moved = [
+      t({ movement: 'transfer', trackId: 'fund', toTrackId: 'fund', amountMinor: toPaise(10000) }),
+    ]
+    const r = fromBalance(moved, toPaise(70000))
+    expect(r.savingsRemainingMinor).toBe(0)
+    expect(r.safeToSpendMinor).toBe(toPaise(37000))
+  })
+
+  it('treats a partly-paid commitment as partly remaining', () => {
+    const half = [t({ trackId: 'rent', amountMinor: toPaise(8000) })]
+    expect(fromBalance(half, toPaise(72000)).committedRemainingMinor).toBe(toPaise(25000))
+  })
+
+  it('never lets an overpaid commitment create spendable money', () => {
+    const over = [t({ trackId: 'rent', amountMinor: toPaise(25000) })]
+    expect(fromBalance(over, toPaise(55000)).committedRemainingMinor).toBe(toPaise(15000))
+  })
+
+  it('subtracts card debt as the liability it is', () => {
+    expect(fromBalance([], toPaise(80000), toPaise(7000)).safeToSpendMinor).toBe(toPaise(30000))
+  })
+
+  it('rises when the salary lands, because the balance rose', () => {
+    const before = fromBalance([], toPaise(20000)).safeToSpendMinor
+    const after = fromBalance([], toPaise(142300)).safeToSpendMinor
+    expect(after - before).toBe(toPaise(122300))
+  })
+
+  it('keeps the daily allowance and rollover working on the new basis', () => {
+    const spentToday = [t({ occurredOn: '2026-09-10', amountMinor: toPaise(600) })]
+    const r = fromBalance(spentToday, toPaise(79400))
+
+    // Balance this morning was 80,000; pool 37,000 across 21 days.
+    expect(r.daysRemaining).toBe(21)
+    expect(r.todayAllowanceMinor).toBe(Math.floor(toPaise(37000) / 21))
+    expect(r.leftTodayMinor).toBe(r.todayAllowanceMinor - toPaise(600))
+  })
+
+  it('falls back to income when no cash figure is given', () => {
+    // undefined selects the fallback; zero would mean "you have nothing".
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: toPaise(122300), tracks: tks, transactions: [], today: SEP_10,
+    })
+    expect(r.basis).toBe('income')
+    expect(r.safeToSpendMinor).toBe(toPaise(122300 - 33000 - 10000))
+  })
+
+  it('reports an overdrawn account honestly rather than clamping', () => {
+    const r = fromBalance([], toPaise(1000))
+    expect(r.safeToSpendMinor).toBeLessThan(0)
+    expect(r.leftTodayMinor).toBe(0)
+  })
+})

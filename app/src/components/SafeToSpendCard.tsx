@@ -126,6 +126,15 @@ export function SafeToSpendCard({
 
       {/* The arithmetic, shown rather than hidden - a number you can't check is a number you won't trust. */}
       <dl className="mt-6 grid gap-x-6 gap-y-3 border-t border-line pt-5 sm:grid-cols-2">
+        {result.basis === 'balance' ? (
+          <>
+            <Row label="In your accounts" value={result.cashMinor} />
+            {result.owedMinor > 0 && <Row label="Owed on cards" value={-result.owedMinor} />}
+            <Row label="Commitments still due" value={-result.committedRemainingMinor} />
+            <Row label="Savings still to move" value={-result.savingsRemainingMinor} />
+          </>
+        ) : (
+          <>
         <div className="flex items-center justify-between gap-4">
           <dt className="font-bold text-muted">Monthly income</dt>
           <dd className="m-0">
@@ -152,7 +161,25 @@ export function SafeToSpendCard({
         <Row label="Commitments reserved" value={-result.committedMinor} />
         <Row label="Savings planned" value={-result.plannedSavingsMinor} />
         <Row label="Spent this month" value={-result.spentMinor} />
+          </>
+        )}
       </dl>
+
+      <p className="mt-4 mb-0 text-sm text-muted">
+        {result.basis === 'balance' ? (
+          <>
+            Built from what your accounts actually hold, so it already includes anything left
+            over from last month and knows whether your salary has landed. Only commitments
+            that <em>haven&rsquo;t gone out yet</em> are subtracted &mdash; the ones already
+            paid have reduced your balance.
+          </>
+        ) : (
+          <>
+            Built from your typed monthly income. Add an account on the Home page and this
+            switches to your real balance, which is more accurate.
+          </>
+        )}
+      </p>
     </section>
   )
 }

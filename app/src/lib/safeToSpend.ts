@@ -17,7 +17,23 @@ cannot accidentally depend on where the data came from.
 
 import type { Track, Transaction } from './types'
 
+export type SafeToSpendBasis = 'balance' | 'income'
+
 export interface SafeToSpendResult {
+  /**
+   * Which starting figure this was built from.
+   *
+   * 'balance' is the real one: what your accounts actually hold. 'income' is the
+   * fallback for someone who has not added an account yet.
+   */
+  basis: SafeToSpendBasis
+  /** Cash across accounts, and what is owed on cards. Zero on the income basis. */
+  cashMinor: number
+  owedMinor: number
+  /** Commitments this month that have NOT been paid yet. */
+  committedRemainingMinor: number
+  /** Planned savings this month not yet transferred. */
+  savingsRemainingMinor: number
   incomeMinor: number
   committedMinor: number
   plannedSavingsMinor: number
@@ -141,21 +157,120 @@ export function spentOnDayMinor(
   return total
 }
 
+/**
+ * Commitments still to leave this month.
+ *
+ * On the balance basis this replaces the full committed figure, and the
+ * distinction is the whole point: once rent has gone out, the account balance
+ * has already dropped by it. Subtracting the full commitment as well would
+ * deduct the same rent twice - which is exactly the double-count the old
+ * income-based version had to avoid in the opposite direction.
+ */
+export function commitmentsRemainingThisMonthMinor(
+  tracks: Track[],
+  transactions: Transaction[],
+  ref: Date,
+): number {
+  let remaining = 0
+
+  for (const track of activeTracks(tracks)) {
+    if (track.type !== 'commitment') continue
+
+    const due = track.commitmentAmountMinor ?? 0
+    if (due <= 0) continue
+
+    const paid = transactions
+      .filter(
+        (t) =>
+          !t.deletedAt &&
+          t.trackId === track.id &&
+          isInMonth(t.occurredOn, ref) &&
+          (t.movement === 'expense' || t.movement === 'transfer'),
+      )
+      .reduce((sum, t) => sum + t.amountMinor, 0)
+
+    // Never negative: overpaying a commitment does not create spendable money.
+    remaining += Math.max(0, due - paid)
+  }
+
+  return remaining
+}
+
+/** Planned savings not yet moved this month, by the same reasoning. */
+export function savingsRemainingThisMonthMinor(
+  tracks: Track[],
+  transactions: Transaction[],
+  ref: Date,
+): number {
+  let remaining = 0
+
+  for (const track of activeTracks(tracks)) {
+    if (track.type !== 'goal' && track.type !== 'project') continue
+
+    const planned = track.plannedMonthlyMinor ?? 0
+    if (planned <= 0) continue
+
+    const moved = transactions
+      .filter(
+        (t) =>
+          !t.deletedAt &&
+          isInMonth(t.occurredOn, ref) &&
+          t.movement === 'transfer' &&
+          (t.toTrackId === track.id || t.trackId === track.id),
+      )
+      .reduce((sum, t) => sum + t.amountMinor, 0)
+
+    remaining += Math.max(0, planned - moved)
+  }
+
+  return remaining
+}
+
 export function computeSafeToSpend(args: {
   monthlyIncomeMinor: number
   tracks: Track[]
   transactions: Transaction[]
   today: Date
+  /**
+   * Cash across accounts. When given, this is the basis instead of income -
+   * real money rather than an assumption that the salary arrived and the month
+   * started from zero.
+   */
+  cashMinor?: number
+  /** Owed on credit cards, subtracted as the liability it is. */
+  owedMinor?: number
 }): SafeToSpendResult {
-  const { monthlyIncomeMinor, tracks, transactions, today } = args
+  const { monthlyIncomeMinor, tracks, transactions, today, cashMinor, owedMinor } = args
 
   const committedMinor = committedThisMonthMinor(tracks)
   const plannedSavingsMinor = plannedSavingsThisMonthMinor(tracks)
   const spentMinor = spentThisMonthMinor(transactions, tracks, today)
   const spentTodayMinor = spentOnDayMinor(transactions, tracks, today)
 
-  const safeToSpendMinor =
-    monthlyIncomeMinor - committedMinor - plannedSavingsMinor - spentMinor
+  const committedRemainingMinor = commitmentsRemainingThisMonthMinor(tracks, transactions, today)
+  const savingsRemainingMinor = savingsRemainingThisMonthMinor(tracks, transactions, today)
+
+  /*
+  Balance basis, when accounts exist.
+
+  What you can spend is what you HOLD, less what is still promised out of it -
+  not a typed salary less everything. The balance already reflects your spending
+  (it went down), already includes whatever last month left over, and already
+  knows whether the salary has actually landed. So spentThisMonth is deliberately
+  NOT subtracted here: doing so would deduct the same rupees twice.
+
+  Card debt subtracts as the liability it is. That is conservative when the bill
+  is not due until next month, and being slightly pessimistic about money you
+  genuinely owe is the right direction for a figure people spend against.
+  */
+  const usingBalance = cashMinor !== undefined
+  const basis: SafeToSpendBasis = usingBalance ? 'balance' : 'income'
+  const cash = cashMinor ?? 0
+  const owed = owedMinor ?? 0
+
+  const safeToSpendMinor = usingBalance
+    ? cash - owed - committedRemainingMinor - savingsRemainingMinor
+    : monthlyIncomeMinor - committedMinor - plannedSavingsMinor - spentMinor
 
   const daysRemaining = daysRemainingInMonth(today)
 
@@ -173,8 +288,10 @@ export function computeSafeToSpend(args: {
   lowered today's own figure by Rs 600/daysRemaining - about Rs 21 - so a card
   labelled "safe to spend today" would barely move as the day was spent.
   */
-  const poolAtStartOfTodayMinor =
-    monthlyIncomeMinor - committedMinor - plannedSavingsMinor - (spentMinor - spentTodayMinor)
+  const poolAtStartOfTodayMinor = usingBalance
+    ? // Add today's spending back to recover the balance as it stood this morning.
+      cash + spentTodayMinor - owed - committedRemainingMinor - savingsRemainingMinor
+    : monthlyIncomeMinor - committedMinor - plannedSavingsMinor - (spentMinor - spentTodayMinor)
 
   const todayAllowanceMinor = Math.floor(
     Math.max(0, poolAtStartOfTodayMinor) / daysRemaining,
@@ -185,6 +302,11 @@ export function computeSafeToSpend(args: {
   const leftTodayMinor = Math.max(0, todayAllowanceMinor - spentTodayMinor)
 
   return {
+    basis,
+    cashMinor: cash,
+    owedMinor: owed,
+    committedRemainingMinor,
+    savingsRemainingMinor,
     incomeMinor: monthlyIncomeMinor,
     committedMinor,
     plannedSavingsMinor,
