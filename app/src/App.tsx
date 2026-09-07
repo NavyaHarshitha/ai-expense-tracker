@@ -6,14 +6,16 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
 import { useTracks } from './hooks/useTracks'
+import { useAccounts } from './hooks/useAccounts'
 import { useCategories } from './hooks/useCategories'
 import { useTheme, type ResolvedTheme } from './hooks/useTheme'
 import { useToday } from './hooks/useToday'
 import { useTransactions } from './hooks/useTransactions'
+import { summariseAccounts, type AccountsSummary } from './lib/accounts'
 import { computeBalance, type BalanceResult } from './lib/balance'
 import { computeSafeToSpend, type SafeToSpendResult } from './lib/safeToSpend'
 import { linkButton } from './lib/ui'
-import type { Category, Track, Transaction } from './lib/types'
+import type { Account, Category, Track, Transaction } from './lib/types'
 
 export interface AppContext {
   uid: string
@@ -22,6 +24,8 @@ export interface AppContext {
   result: SafeToSpendResult
   balance: BalanceResult
   categories: Category[]
+  accounts: Account[]
+  accountsSummary: AccountsSummary
   /** Charts need the actual colour in JS, not through a CSS variable. */
   theme: ResolvedTheme
   today: Date
@@ -43,6 +47,11 @@ export interface AppContext {
   renameCategory: (uid: string, category: Category, name: string) => Promise<{ rowsUpdated: number }>
   archiveCategory: (uid: string, id: string) => Promise<void>
   restoreCategory: (uid: string, id: string) => Promise<void>
+  createAccount: (uid: string, account: Omit<Account, 'id'>) => Promise<void>
+  updateAccount: (uid: string, id: string, patch: Partial<Account>) => Promise<void>
+  setPrimaryAccount: (uid: string, id: string) => Promise<void>
+  archiveAccount: (uid: string, id: string) => Promise<void>
+  deleteAccount: (uid: string, id: string) => Promise<void>
 }
 
 /** Typed accessor so pages don't repeat the generic. */
@@ -74,6 +83,7 @@ export default function App() {
     balanceAnchorMinor,
     balanceAnchorOn,
     categoriesSeeded,
+    accountsMigrated,
     setIncome,
     setBalanceAnchor,
   } = useProfile(uid)
@@ -85,6 +95,24 @@ export default function App() {
     archiveCategory,
     restoreCategory,
   } = useCategories(uid, categoriesSeeded)
+
+  const {
+    active: accounts,
+    createAccount,
+    updateAccount,
+    setPrimary: setPrimaryAccount,
+    archiveAccount,
+    deleteAccount,
+  } = useAccounts(uid, {
+    anchorMinor: balanceAnchorMinor,
+    anchorOn: balanceAnchorOn,
+    migrated: accountsMigrated,
+  })
+
+  const accountsSummary = useMemo(
+    () => summariseAccounts(accounts, transactions),
+    [accounts, transactions],
+  )
 
   /*
   A live value, not a snapshot taken at first render. `today` is now a memo
@@ -126,6 +154,8 @@ export default function App() {
     result,
     balance,
     categories,
+    accounts,
+    accountsSummary,
     theme: theme.resolved,
     today,
     createTrack,
@@ -142,6 +172,11 @@ export default function App() {
     renameCategory,
     archiveCategory,
     restoreCategory,
+    createAccount,
+    updateAccount,
+    setPrimaryAccount,
+    archiveAccount,
+    deleteAccount,
   }
 
   return (

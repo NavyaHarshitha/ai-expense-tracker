@@ -18,6 +18,7 @@ export function AddExpense() {
     tracks,
     transactions,
     categories,
+    accounts,
     today,
     createTransaction,
     updateTransaction,
@@ -70,6 +71,7 @@ export function AddExpense() {
           tracks={tracks}
           categories={categoryNameList}
           categoryDocs={categories}
+          accounts={accounts}
           recent={transactions}
           onRenameCategory={renameCategory}
           today={today}

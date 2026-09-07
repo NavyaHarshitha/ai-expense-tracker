@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useApp } from '../App'
-import { BalanceCard } from '../components/BalanceCard'
+import { AccountsPanel } from '../components/AccountsPanel'
 import { CategoryManager } from '../components/CategoryManager'
 import { SafeToSpendCard } from '../components/SafeToSpendCard'
 import { TrackForm } from '../components/TrackForm'
@@ -22,7 +22,6 @@ export function Home() {
     tracks,
     transactions,
     result,
-    balance,
     today,
     createTrack,
     updateTrack,
@@ -30,7 +29,12 @@ export function Home() {
     deleteTrack,
     reassignAndDeleteTrack,
     setIncome,
-    setBalanceAnchor,
+    accountsSummary,
+    createAccount,
+    updateAccount,
+    setPrimaryAccount,
+    archiveAccount,
+    deleteAccount,
     categories,
     createCategory,
     renameCategory,
@@ -48,8 +52,18 @@ export function Home() {
     return counts
   }, [transactions])
 
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+  /* How many rows sit on each account, so removing one is an informed choice. */
+  const usageByAccount = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const t of transactions) {
+      if (t.deletedAt) continue
+      for (const id of [t.accountId, t.toAccountId]) {
+        if (id) counts.set(id, (counts.get(id) ?? 0) + 1)
+      }
+    }
+    return counts
+  }, [transactions])
+
 
   const [seeding, setSeeding] = useState(false)
   const [editing, setEditing] = useState<Track | null>(null)
@@ -101,10 +115,14 @@ export function Home() {
     <div className="grid gap-8">
       <SafeToSpendCard result={result} onIncomeChange={(minor) => setIncome(uid, minor)} />
 
-      <BalanceCard
-        balance={balance}
-        todayIso={todayIso}
-        onAnchor={(minor, on) => setBalanceAnchor(uid, minor, on)}
+      <AccountsPanel
+        summary={accountsSummary}
+        usageByAccount={usageByAccount}
+        onCreate={(account) => createAccount(uid, account)}
+        onUpdate={(id, patch) => updateAccount(uid, id, patch)}
+        onSetPrimary={(id) => setPrimaryAccount(uid, id)}
+        onArchive={(id) => archiveAccount(uid, id)}
+        onDelete={(id) => deleteAccount(uid, id)}
       />
 
       {transactions.length === 0 && tracks.length === 0 && (

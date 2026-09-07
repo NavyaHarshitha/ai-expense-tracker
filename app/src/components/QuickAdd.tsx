@@ -9,6 +9,7 @@ import { usePlanExecutor } from '../hooks/usePlanExecutor'
 import { useReceiptCapture } from '../hooks/useReceiptCapture'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
 import { type ParsedCandidate, planActions } from '../lib/api'
+import { defaultAccountId } from '../lib/accounts'
 import { toPaise } from '../lib/money'
 import { isStructural, normaliseAll, type NormalisedAction } from '../lib/planActions'
 import {
@@ -16,6 +17,7 @@ import {
   PAYMENT_METHOD_LABELS,
   type Movement,
   type PaymentMethod,
+  type Account,
   type Category,
   type Track,
   type Transaction,
@@ -43,6 +45,7 @@ export function QuickAdd({
   tracks,
   categories,
   categoryDocs,
+  accounts,
   recent,
   onRenameCategory,
   today,
@@ -56,6 +59,7 @@ export function QuickAdd({
   tracks: Track[]
   categories: string[]
   categoryDocs: Category[]
+  accounts: Account[]
   /** Recent rows so voice can refer to one it needs to correct. */
   recent: Transaction[]
   onRenameCategory: (
@@ -77,6 +81,7 @@ export function QuickAdd({
   const [movement, setMovement] = useState<Movement>('expense')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi')
   const [occurredOn, setOccurredOn] = useState(todayIso())
+  const [accountId, setAccountId] = useState('')
   const [note, setNote] = useState('')
   const [showNote, setShowNote] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -89,6 +94,12 @@ export function QuickAdd({
   const defaultTrack = tracks.find((t) => t.type === 'spending') ?? tracks[0]
   const effectiveTrackId = trackId || defaultTrack?.id || ''
 
+  /*
+  Defaults to the primary account, and never to a credit card - defaulting
+  expenses onto a card would quietly build debt nobody chose.
+  */
+  const effectiveAccountId = accountId || defaultAccountId(accounts) || ''
+
   function reset() {
     setAmount('')
     setDescription('')
@@ -97,6 +108,7 @@ export function QuickAdd({
     setMovement('expense')
     setPaymentMethod('upi')
     setOccurredOn(todayIso())
+    setAccountId('')
     setNote('')
     setShowNote(false)
   }
@@ -114,6 +126,7 @@ export function QuickAdd({
     setMovement(editing.movement)
     setPaymentMethod(editing.paymentMethod)
     setOccurredOn(editing.occurredOn)
+    setAccountId(editing.accountId ?? '')
     setNote(editing.note ?? '')
     setShowNote(Boolean(editing.note))
   }, [editing])
@@ -141,6 +154,7 @@ export function QuickAdd({
       // Written explicitly so clearing a note actually clears it.
       note: note.trim() || '',
       paymentMethod,
+      ...(effectiveAccountId ? { accountId: effectiveAccountId } : {}),
     }
 
     if (editing) {
@@ -182,12 +196,13 @@ export function QuickAdd({
         description: candidate.description || candidate.category,
         ...(candidate.note ? { note: candidate.note } : {}),
         paymentMethod: candidate.payment_method,
+        ...(defaultAccountId(accounts) ? { accountId: defaultAccountId(accounts) } : {}),
         source: 'voice',
         createdAt: Date.now(),
         deletedAt: null,
       })
     },
-    [onAdd],
+    [onAdd, accounts],
   )
 
   /*
@@ -543,7 +558,7 @@ export function QuickAdd({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className={fieldLabel} htmlFor="qa-date">
               Date
@@ -575,6 +590,26 @@ export function QuickAdd({
               ))}
             </select>
           </div>
+
+          {accounts.length > 0 && (
+            <div>
+              <label className={fieldLabel} htmlFor="qa-account">
+                Account
+              </label>
+              <select
+                id="qa-account"
+                className={field}
+                value={effectiveAccountId}
+                onChange={(e) => setAccountId(e.target.value)}
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={fieldLabel} htmlFor="qa-movement">

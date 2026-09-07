@@ -81,9 +81,49 @@ export interface Transaction {
   fromTrackId?: string
   toTrackId?: string
 
+  /**
+   * Which account the money moved through.
+   *
+   * Optional because rows written before accounts existed have none; every
+   * balance treats a missing accountId as "not on any account" rather than
+   * guessing, so an old row never silently distorts a figure.
+   */
+  accountId?: string
+  /** The receiving account, for a transfer between two of your own accounts. */
+  toAccountId?: string
+
   createdAt: number
   /** soft delete - all reads filter on this being null */
   deletedAt?: number | null
+}
+
+export type AccountKind = 'bank' | 'cash' | 'wallet' | 'credit_card'
+
+/*
+Where money physically sits, as opposed to which bucket it is earmarked for.
+
+A track and an account answer different questions - "which budget does this come
+out of" versus "which account did it actually leave". Rent can be reserved in a
+commitment track and still bounce because it debits the wrong account on the 5th.
+*/
+export interface Account {
+  id: string
+  name: string
+  kind: AccountKind
+  /** What it held when tracking began, and the date that was true. */
+  openingBalanceMinor: number
+  /** YYYY-MM-DD */
+  openingOn: string
+
+  /** Credit cards only. */
+  creditLimitMinor?: number
+  statementDay?: number
+  dueDay?: number
+
+  /** Where new expenses land unless another is chosen. */
+  isPrimary?: boolean
+  archived: boolean
+  createdAt?: number
 }
 
 export interface Category {
@@ -112,6 +152,9 @@ export interface Profile {
   balanceAnchorMinor?: number
   /** YYYY-MM-DD - the date the anchor figure was true. */
   balanceAnchorOn?: string
+
+  /** Set once, when the single balance anchor is migrated into an account. */
+  accountsMigratedAt?: number
 
   /*
   Set once, when the starter categories are created.

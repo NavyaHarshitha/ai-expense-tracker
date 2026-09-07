@@ -10,6 +10,7 @@ export function useProfile(uid: string | undefined) {
   const [balanceAnchorOn, setBalanceAnchorOn] = useState<string | undefined>(undefined)
   // undefined while loading, then true/false - so seeding never runs on a guess.
   const [categoriesSeeded, setCategoriesSeeded] = useState<boolean | undefined>(undefined)
+  const [accountsMigrated, setAccountsMigrated] = useState<boolean | undefined>(undefined)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function useProfile(uid: string | undefined) {
         setBalanceAnchorMinor(data?.balanceAnchorMinor ?? undefined)
         setBalanceAnchorOn(data?.balanceAnchorOn ?? undefined)
         setCategoriesSeeded(Boolean(data?.categoriesSeededAt))
+        setAccountsMigrated(Boolean(data?.accountsMigratedAt))
         setLoading(false)
       },
       () => setLoading(false),
@@ -60,6 +62,7 @@ export function useProfile(uid: string | undefined) {
     balanceAnchorMinor,
     balanceAnchorOn,
     categoriesSeeded,
+    accountsMigrated,
     loading,
     setIncome,
     setBalanceAnchor,
