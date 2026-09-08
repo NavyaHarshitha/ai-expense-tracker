@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
+import { sanitiseAll, toCategory } from '../lib/sanitize'
 import { STARTER_CATEGORIES, slugify } from '../lib/categories'
 import type { Category } from '../lib/types'
 
@@ -32,7 +33,7 @@ export function useCategories(uid: string | undefined, seeded: boolean | undefin
     return onSnapshot(
       collection(db, userPath(uid, 'categories')),
       (snap) => {
-        setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Category))
+        setCategories(sanitiseAll(snap.docs, toCategory))
         setLoading(false)
       },
       () => setLoading(false),

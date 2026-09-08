@@ -1,0 +1,24 @@
+{
+  "name": "AI Expense Tracker",
+  "short_name": "Expenses",
+  "description": "An expense tracker you talk to. Know what is safe to spend today, after your EMIs, SIPs and savings.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fdf6e3",
+  "theme_color": "#a8446a",
+  "categories": ["finance", "productivity", "utilities"],
+  "lang": "en-IN",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Add an expense", "short_name": "Add", "url": "/add" },
+    { "name": "Dashboard", "short_name": "Stats", "url": "/dashboard" }
+  ]
+}

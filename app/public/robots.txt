@@ -1,0 +1,4 @@
+# A personal finance app: every page requires sign-in and shows one user's own
+# ledger. There is nothing here for a crawler to index, and plenty it should not.
+User-agent: *
+Disallow: /

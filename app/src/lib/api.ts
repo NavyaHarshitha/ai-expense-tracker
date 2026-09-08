@@ -59,11 +59,15 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     const message =
       response.status === 413
         ? 'That recording was too long. Keep it under a minute.'
-        : response.status === 502
-          ? 'Could not reach the model. Try again in a moment.'
-          : response.status === 401
-            ? 'Your session expired. Sign in again.'
-            : 'Something went wrong. Try again.'
+        : response.status === 429
+          ? 'Slow down a moment - too many requests in a row.'
+          : response.status === 400
+            ? 'That input could not be read. Try again.'
+            : response.status === 502
+              ? 'Could not reach the model. Try again in a moment.'
+              : response.status === 401
+                ? 'Your session expired. Sign in again.'
+                : 'Something went wrong. Try again.'
     throw new ApiError(message, response.status)
   }
 

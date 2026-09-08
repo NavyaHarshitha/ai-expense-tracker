@@ -22,3 +22,9 @@ firestore-debug.log
 
 # Claude Code personal overrides (not team settings)
 .claude/settings.local.json
+
+# python bytecode — build artefacts, and they were being committed
+__pycache__/
+*.py[cod]
+.venv/
+venv/

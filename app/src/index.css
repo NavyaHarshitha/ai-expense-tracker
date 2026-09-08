@@ -21,9 +21,24 @@ as utilities instead of hand-written classes.
   --color-surface: #fffaf7;
   --color-ink: #2e2229;
   --color-ink-soft: #5b4a53;
-  --color-muted: #8d7a83;
+  /*
+  Darkened from #8d7a83, which measured 3.87:1 on surface and 3.66:1 on canvas -
+  below the 4.5:1 AA floor for body text. text-muted is not decoration here; it
+  carries captions, hints and the "left across N days" line under the hero, so
+  it has to be readable rather than merely present. Same hue, lower lightness.
+  */
+  --color-muted: #7d6b74;
   --color-line: #f0ddd8;
   --color-line-strong: #e0c6c3;
+  /*
+  The edge of an interactive control, as opposed to a decorative divider.
+
+  WCAG 1.4.11 wants 3:1 for the boundary that identifies a component; line-strong
+  measures 1.55:1, which is right for a hairline rule between rows and wrong for
+  the edge of a text box. Splitting the two lets dividers stay quiet while inputs
+  and selects become findable.
+  */
+  --color-field: #b97f78;
   /* Table headers, footers and other faintly-raised strips. */
   --color-surface-2: #fdf0e8;
 
@@ -31,7 +46,8 @@ as utilities instead of hand-written classes.
   /* Tinted background behind a destructive action or an error. */
   --color-danger-soft: #fbeeec;
   /* A caution that is not an error - near-duplicate names, burn-rate notices. */
-  --color-warn: #9a6a09;
+  /* 4.32:1 on canvas before, a hair under AA. */
+  --color-warn: #966709;
   --color-good: #4a7c3f;
 
   --font-sans: 'Inter', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -92,6 +108,7 @@ not for depth - brightens further still.
       --color-muted: #a196b5;
       --color-line: #413a56;
       --color-line-strong: #564d6e;
+    --color-field: #7c709b;
 
       --color-danger: #f08a8a;
       --color-danger-soft: #3d2836;
@@ -121,6 +138,7 @@ not for depth - brightens further still.
     --color-muted: #a196b5;
     --color-line: #413a56;
     --color-line-strong: #564d6e;
+    --color-field: #7c709b;
 
     --color-danger: #f08a8a;
     --color-danger-soft: #3d2836;
@@ -183,10 +201,61 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Focus ring matching the original --focus-ring token. */
-:where(a, button, input, select, textarea):focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(168, 68, 106, 0.18);
+/*
+Focus ring.
+
+This was `outline: none` plus a pink glow at 0.18 alpha, which is not a focus
+indicator - it is invisible against the light wash and effectively absent on the
+dark lavender. WCAG 2.2 asks for an indicator with a contrast ratio of at least
+3:1 against what it sits on, and keyboard users cannot navigate an app whose
+focus they cannot see.
+
+So: a real 2px outline in the theme's own ink colour, offset so it traces the
+control rather than crowding it, with the soft halo kept underneath purely as
+decoration. currentColor is deliberately avoided - a muted grey button would
+draw a muted grey ring.
+*/
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-primary-dark);
+  outline-offset: 2px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/*
+Skip link: the first thing a keyboard or screen-reader user reaches, and hidden
+until it has focus. Without it, every visit means tabbing through the whole nav
+before reaching the figures the page exists to show.
+*/
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/*
+Phones with a notch or a home indicator.
+
+viewport-fit=cover lets the page paint edge to edge, which then puts content
+under the system UI unless it is padded back. Only the sides and bottom need it;
+the sticky header handles its own top inset.
+*/
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 @media (prefers-reduced-motion: reduce) {

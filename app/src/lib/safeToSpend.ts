@@ -61,8 +61,24 @@ export function daysRemainingInMonth(ref: Date): number {
   return Math.max(1, daysInMonth(ref) - ref.getDate() + 1)
 }
 
+/*
+Both date predicates take `string | undefined | null` deliberately.
+
+They used to take `string` and call .split() on it directly. Firestore is
+schemaless, so a document written by an older build - or a partially applied
+voice plan - can arrive with no occurredOn at all, and .split() of undefined
+throws. Thrown from inside a useMemo during render, that unmounts the entire
+tree: one malformed row, and the whole app is a white screen.
+
+Rows are sanitised on the way in now, so this should never fire. It stays
+because a date predicate returning false for a date it cannot read is correct
+behaviour, and a total that quietly omits one row beats an app that does not
+render.
+*/
+
 /** Is an ISO 'YYYY-MM-DD' date the same calendar day as `ref`? Local time, not UTC. */
-export function isSameDay(occurredOn: string, ref: Date): boolean {
+export function isSameDay(occurredOn: string | undefined | null, ref: Date): boolean {
+  if (typeof occurredOn !== 'string') return false
   const [year, month, day] = occurredOn.split('-').map(Number)
   return (
     year === ref.getFullYear() && month === ref.getMonth() + 1 && day === ref.getDate()
@@ -70,7 +86,8 @@ export function isSameDay(occurredOn: string, ref: Date): boolean {
 }
 
 /** Is an ISO 'YYYY-MM-DD' date inside the same calendar month as `ref`? */
-export function isInMonth(occurredOn: string, ref: Date): boolean {
+export function isInMonth(occurredOn: string | undefined | null, ref: Date): boolean {
+  if (typeof occurredOn !== 'string') return false
   const [year, month] = occurredOn.split('-').map(Number)
   return year === ref.getFullYear() && month === ref.getMonth() + 1
 }
@@ -177,6 +194,23 @@ export function commitmentsRemainingThisMonthMinor(
 ): number {
   let remaining = 0
 
+  /*
+  Bucket this month's rows by track ONCE, rather than re-filtering the whole
+  ledger inside the per-track loop.
+
+  The old shape was O(tracks x transactions): measured at 10,000 rows and three
+  tracks it was fine, but the cost is multiplied by every commitment a user
+  adds, and someone with twenty of them was scanning the ledger twenty times to
+  answer one question. One pass, then a map lookup per track.
+  */
+  const paidByTrack = new Map<string, number>()
+  for (const t of transactions) {
+    if (t.deletedAt) continue
+    if (t.movement !== 'expense' && t.movement !== 'transfer') continue
+    if (!isInMonth(t.occurredOn, ref)) continue
+    paidByTrack.set(t.trackId, (paidByTrack.get(t.trackId) ?? 0) + t.amountMinor)
+  }
+
   for (const track of activeTracks(tracks)) {
     if (track.type !== 'commitment') continue
 
@@ -202,15 +236,7 @@ export function commitmentsRemainingThisMonthMinor(
       continue
     }
 
-    const paid = transactions
-      .filter(
-        (t) =>
-          !t.deletedAt &&
-          t.trackId === track.id &&
-          isInMonth(t.occurredOn, ref) &&
-          (t.movement === 'expense' || t.movement === 'transfer'),
-      )
-      .reduce((sum, t) => sum + t.amountMinor, 0)
+    const paid = paidByTrack.get(track.id) ?? 0
 
     // Never negative: overpaying a commitment does not create spendable money.
     remaining += Math.max(0, due - paid)
@@ -227,21 +253,28 @@ export function savingsRemainingThisMonthMinor(
 ): number {
   let remaining = 0
 
+  /*
+  One pass, same reasoning as above. A transfer credits the track named by
+  toTrackId when there is one and by trackId otherwise, so each row contributes
+  to exactly one bucket - which is also what stops a transfer between two of the
+  user's own tracks being counted twice.
+  */
+  const movedByTrack = new Map<string, number>()
+  for (const t of transactions) {
+    if (t.deletedAt) continue
+    if (t.movement !== 'transfer') continue
+    if (!isInMonth(t.occurredOn, ref)) continue
+    const target = t.toTrackId ?? t.trackId
+    movedByTrack.set(target, (movedByTrack.get(target) ?? 0) + t.amountMinor)
+  }
+
   for (const track of activeTracks(tracks)) {
     if (track.type !== 'goal' && track.type !== 'project') continue
 
     const planned = track.plannedMonthlyMinor ?? 0
     if (planned <= 0) continue
 
-    const moved = transactions
-      .filter(
-        (t) =>
-          !t.deletedAt &&
-          isInMonth(t.occurredOn, ref) &&
-          t.movement === 'transfer' &&
-          (t.toTrackId === track.id || t.trackId === track.id),
-      )
-      .reduce((sum, t) => sum + t.amountMinor, 0)
+    const moved = movedByTrack.get(track.id) ?? 0
 
     remaining += Math.max(0, planned - moved)
   }

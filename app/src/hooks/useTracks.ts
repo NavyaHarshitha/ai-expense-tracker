@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
+import { sanitiseAll, toTrack } from '../lib/sanitize'
 import type { Track } from '../lib/types'
 
 export function useTracks(uid: string | undefined) {
@@ -31,7 +32,7 @@ export function useTracks(uid: string | undefined) {
     return onSnapshot(
       collection(db, userPath(uid, 'tracks')),
       (snap) => {
-        setTracks(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Track))
+        setTracks(sanitiseAll(snap.docs, toTrack))
         setLoading(false)
       },
       () => setLoading(false),

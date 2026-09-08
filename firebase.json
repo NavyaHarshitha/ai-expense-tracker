@@ -12,6 +12,32 @@
       {
         "source": "/assets/**",
         "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "comment": "Clickjacking. A financial app framed inside another page can be overlaid so that a click lands on a control the user cannot see. frame-ancestors is the modern directive and X-Frame-Options the fallback for older agents; both say the same thing. This restricts who may frame US, and does not affect the auth iframe this app itself hosts.",
+            "key": "Content-Security-Policy",
+            "value": "frame-ancestors 'none'"
+          },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          {
+            "comment": "Stops a browser second-guessing a declared Content-Type, which is how a served file gets reinterpreted as script.",
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "comment": "Never leak the path of a page in this app to a third party - a URL alone can disclose what someone was looking at.",
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "comment": "Voice entry needs the microphone and receipt capture needs the camera, so both are allowed for this origin and denied to everything embedded. Everything else the app has no business asking for is switched off outright.",
+            "key": "Permissions-Policy",
+            "value": "microphone=(self), camera=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
+          }
+        ]
       }
     ]
   },

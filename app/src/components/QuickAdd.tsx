@@ -10,7 +10,7 @@ import { useReceiptCapture } from '../hooks/useReceiptCapture'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
 import { type ParsedCandidate, planActions } from '../lib/api'
 import { defaultAccountId } from '../lib/accounts'
-import { toPaise } from '../lib/money'
+import { toAmountMinor, toPaise } from '../lib/money'
 import { isStructural, normaliseAll, type NormalisedAction } from '../lib/planActions'
 import {
   MOVEMENT_LABELS,
@@ -189,7 +189,8 @@ export function QuickAdd({
     async (candidate: ParsedCandidate, trackIdForCandidate: string): Promise<string> => {
       return onAdd({
         occurredOn: candidate.occurred_on || todayIso(),
-        amountMinor: toPaise(candidate.amount_rupees),
+        // toAmountMinor, not toPaise: a model-supplied figure is untrusted input.
+        amountMinor: toAmountMinor(candidate.amount_rupees),
         movement: 'expense',
         trackId: trackIdForCandidate,
         categoryName: candidate.category,

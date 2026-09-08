@@ -15,7 +15,9 @@ export default defineConfig({
     */
     rolldownOptions: {
       output: {
-        advancedChunks: {
+        // `advancedChunks` is deprecated in this rolldown version; `codeSplitting`
+        // is the same option under its current name, and keeps the build warning-free.
+        codeSplitting: {
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|react-router)/ },
             { name: 'firebase', test: /node_modules[\\/]@?firebase/ },

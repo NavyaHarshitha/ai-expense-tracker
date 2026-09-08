@@ -31,6 +31,11 @@ export function ReceiptButton({
         type="file"
         accept="image/*"
         capture="environment"
+        aria-label="Photograph a receipt"
+        /* display:none already keeps it out of the a11y tree; tabIndex -1 means
+           it stays out even if the class ever changes. The visible button below
+           is the real control. */
+        tabIndex={-1}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]

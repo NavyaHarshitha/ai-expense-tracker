@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
+import { sanitiseAll, toTransaction } from '../lib/sanitize'
 import type { Transaction } from '../lib/types'
 
 export function useTransactions(uid: string | undefined) {
@@ -26,9 +27,9 @@ export function useTransactions(uid: string | undefined) {
     return onSnapshot(
       q,
       (snap) => {
-        const rows = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as Transaction)
-          .filter((t) => !t.deletedAt)
+        // Sanitised, not cast: see lib/sanitize.ts. A row that cannot be
+        // repaired is dropped here rather than poisoning every total downstream.
+        const rows = sanitiseAll(snap.docs, toTransaction).filter((t) => !t.deletedAt)
         setTransactions(rows)
         setLoading(false)
       },

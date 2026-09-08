@@ -19,6 +19,14 @@ from pydantic import BaseModel, Field
 
 from auth import require_user
 from gemini import MAX_ACTIONS, MODEL, parse_expenses, plan_actions, write_insight
+from limits import (
+    MAX_CATEGORIES,
+    MAX_RECENT,
+    MAX_TRACKS,
+    check_rate,
+    clamp_list,
+    clamp_text,
+)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -145,14 +153,23 @@ async def parse(req: ParseRequest, uid: str = Depends(require_user)):
     if req.audio_base64 and len(req.audio_base64) > MAX_AUDIO_BASE64:
         raise HTTPException(status_code=413, detail="Recording too long - keep it under a minute")
 
+    # Metered AFTER the cheap validation above, so a malformed request does not
+    # spend the caller's allowance, and BEFORE the model call, which is the
+    # thing actually worth protecting.
+    check_rate(uid)
+
     try:
         raw = parse_expenses(
-            text=req.text,
+            text=clamp_text(req.text),
             audio_base64=req.audio_base64,
             mime_type=req.mime_type,
-            categories=req.categories or DEFAULT_CATEGORIES,
-            methods=req.methods or DEFAULT_METHODS,
+            categories=clamp_list(req.categories or DEFAULT_CATEGORIES, MAX_CATEGORIES),
+            methods=clamp_list(req.methods or DEFAULT_METHODS, 12),
         )
+    except HTTPException:
+        # A deliberate status (400 for bad base64, 429 from the limiter) must not
+        # be relabelled as a model outage by the catch-all below.
+        raise
     except Exception as exc:
         log.exception("Parse failed for uid=%s", uid)
         raise HTTPException(status_code=502, detail="Could not reach the model") from exc
@@ -205,18 +222,22 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
     if req.image_base64 and len(req.image_base64) > MAX_IMAGE_BASE64:
         raise HTTPException(status_code=413, detail="Image too large - try a tighter crop")
 
+    check_rate(uid)
+
     try:
         actions, reply, transcript = plan_actions(
-            text=req.text,
+            text=clamp_text(req.text),
             audio_base64=req.audio_base64,
             image_base64=req.image_base64,
             mime_type=req.mime_type,
-            existing_tracks=req.existing_tracks,
-            categories=req.categories or DEFAULT_CATEGORIES,
-            recent_transactions=req.recent_transactions[:40],
+            existing_tracks=clamp_list(req.existing_tracks, MAX_TRACKS),
+            categories=clamp_list(req.categories or DEFAULT_CATEGORIES, MAX_CATEGORIES),
+            recent_transactions=clamp_list(req.recent_transactions, MAX_RECENT),
             today=req.today,
             timezone=req.timezone,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         log.exception("Plan failed for uid=%s", uid)
         raise HTTPException(status_code=502, detail="Could not reach the model") from exc
@@ -238,8 +259,12 @@ async def plan(req: PlanRequest, uid: str = Depends(require_user)):
 
 @app.post("/insights", response_model=InsightResponse)
 async def insights(req: InsightRequest, uid: str = Depends(require_user)):
+    check_rate(uid)
+
     try:
         result = write_insight(req.model_dump())
+    except HTTPException:
+        raise
     except Exception as exc:
         log.exception("Insight failed for uid=%s", uid)
         raise HTTPException(status_code=502, detail="Could not reach the model") from exc

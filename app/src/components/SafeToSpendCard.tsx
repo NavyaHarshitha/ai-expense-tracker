@@ -54,10 +54,25 @@ export function SafeToSpendCard({
   }
 
   return (
-    <section className={`${card} border-l-4 border-l-primary p-6`}>
-      <span className={eyebrow}>Safe to spend today</span>
+    <section aria-labelledby="sts-heading" className={`${card} border-l-4 border-l-primary p-6`}>
+      <h2 id="sts-heading" className={eyebrow}>
+        Safe to spend today
+      </h2>
 
+      {/*
+      A live region, because this figure changes without the user navigating:
+      saving an expense, a Firestore push from another device, or midnight
+      rolling the day over. Sighted users see it move; without aria-live a
+      screen-reader user is simply never told.
+
+      The visible text is the amount alone - big and glanceable. The label
+      carries the whole sentence, so it is announced as "Safe to spend today,
+      Rs 410" rather than a bare number with no subject.
+      */}
       <p
+        role="status"
+        aria-live="polite"
+        aria-label={`Safe to spend today: ${formatINR(result.leftTodayMinor)}`}
         className={`tnum m-0 mt-2 text-5xl font-extrabold tracking-tight sm:text-6xl ${
           overspent || dayExhausted ? 'text-danger' : 'text-primary-dark'
         }`}

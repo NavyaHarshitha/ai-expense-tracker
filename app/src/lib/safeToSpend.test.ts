@@ -6,6 +6,7 @@ import {
   isInMonth,
   commitmentsRemainingThisMonthMinor,
   isSameDay,
+  savingsRemainingThisMonthMinor,
   spentThisMonthMinor,
 } from './safeToSpend'
 import { toPaise, formatINR } from './money'
@@ -574,5 +575,42 @@ describe('bills that fall due before payday are held a cycle early', () => {
     const paid = [t({ id: 'p1', trackId: 'p', amountMinor: toPaise(4000), occurredOn: '2026-09-05' })]
     // dueDay 5 is not BEFORE payday 5, so paying it releases it.
     expect(commitmentsRemainingThisMonthMinor(onPayday, paid, SEP_10, PAYDAY)).toBe(0)
+  })
+})
+
+/*
+Bucketing transfers by destination changed one behaviour deliberately, so it is
+pinned here.
+
+The old per-track filter matched `toTrackId === track.id || trackId === track.id`,
+which credited BOTH ends of a goal-to-goal transfer: moving Rs 5,000 from the
+trip fund into the emergency fund counted as Rs 5,000 of progress on each. Money
+has one destination, so now only the receiving track is credited.
+*/
+describe('a transfer between two goals credits only the destination', () => {
+  const from: Track = {
+    id: 'g1', name: 'Trip', type: 'goal', archived: false, plannedMonthlyMinor: 1000000,
+  }
+  const to: Track = {
+    id: 'g2', name: 'Emergency', type: 'goal', archived: false, plannedMonthlyMinor: 1000000,
+  }
+
+  const move: Transaction = {
+    id: 'm', occurredOn: '2026-09-05', amountMinor: 400000, movement: 'transfer',
+    trackId: 'g1', toTrackId: 'g2', categoryName: 'Savings', description: 'rebalance',
+    paymentMethod: 'bank_transfer', source: 'manual', createdAt: 0, deletedAt: null,
+  }
+
+  it('leaves the source track still owing its full monthly plan', () => {
+    const ref = new Date(2026, 8, 9)
+    // g1 sent the money out, so none of its own Rs 10,000 plan is satisfied.
+    // g2 received Rs 4,000, so Rs 6,000 of its plan remains.
+    expect(savingsRemainingThisMonthMinor([from, to], [move], ref)).toBe(1000000 + 600000)
+  })
+
+  it('credits a plain contribution with no toTrackId to the named track', () => {
+    const ref = new Date(2026, 8, 9)
+    const contribution: Transaction = { ...move, id: 'c', toTrackId: undefined, trackId: 'g2' }
+    expect(savingsRemainingThisMonthMinor([to], [contribution], ref)).toBe(600000)
   })
 })

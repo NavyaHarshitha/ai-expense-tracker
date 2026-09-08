@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore'
 
 import { db, userPath } from '../lib/firebase'
+import { sanitiseAll, toAccount } from '../lib/sanitize'
 import type { Account } from '../lib/types'
 
 export function useAccounts(
@@ -23,7 +24,7 @@ export function useAccounts(
     return onSnapshot(
       collection(db, userPath(uid, 'accounts')),
       (snap) => {
-        setAccounts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Account))
+        setAccounts(sanitiseAll(snap.docs, toAccount))
         setLoading(false)
       },
       () => setLoading(false),

@@ -9,15 +9,94 @@ if the client asks for it.
 This is financial data and the frontend talks to Firestore directly, so these
 rules are the entire authorization layer. Verify by signing in as a second
 Google account and confirming it sees nothing.
+
+Ownership is necessary but not sufficient. These rules also validate the SHAPE
+of money-carrying documents, because "you may write to your own ledger" is not
+the same as "you may write anything at all to your own ledger". A tampered
+client, a stale build, or a bug in a batch write could otherwise persist a
+negative amount or a NaN, and a bad number in a financial record is permanent in
+a way that a bad string is not. The app sanitises on read as well; these rules
+stop it being written in the first place.
+
+NOTE ON STRUCTURE: rules are a permissive union - if any matching rule allows a
+request, it is allowed. A catch-all `match /{document=**}` alongside a validated
+`match /transactions/{id}` would therefore grant exactly what the validation was
+written to refuse. So every collection is listed explicitly and there is no
+recursive wildcard. Adding a collection means adding it here, which is the
+correct amount of friction for a database holding money.
 */
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function signedIn(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
 
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+    /*
+    A finite, non-negative whole number of paise, inside a sane ceiling.
+
+    `is number` is true for NaN and Infinity, so the range check is what
+    actually excludes them: NaN fails every comparison, including >= 0, and
+    Infinity fails the upper bound. Rs 10 crore matches MAX_AMOUNT_MINOR in
+    app/src/lib/money.ts - the same precision guard, enforced on both sides of
+    the wire.
+    */
+    function validAmount(v) {
+      return v is number && v >= 0 && v <= 10000000000;
+    }
+
+    function validDate(v) {
+      return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    /*
+    Checked against the document as it will exist AFTER the write, so it holds
+    for a partial update as well as a create. Only the fields the app genuinely
+    depends on are constrained; the rest stay free to evolve without a deploy.
+    */
+    function validTransaction(d) {
+      return validAmount(d.amountMinor)
+        && validDate(d.occurredOn)
+        && d.movement in ['expense', 'income', 'transfer', 'refund']
+        && d.description is string
+        && d.categoryName is string;
+    }
+
+    match /users/{uid} {
+
+      /* The profile document itself: income, balance anchor, payday. */
+      allow read, write: if signedIn(uid);
+
+      match /transactions/{txnId} {
+        allow read: if signedIn(uid);
+        allow create, update: if signedIn(uid) && validTransaction(request.resource.data);
+        /*
+        Financial records are corrected by appending, never destroyed. Deletion
+        goes through a deletedAt timestamp, which is an update - so a hard
+        delete is refused here rather than merely avoided by the client.
+        */
+        allow delete: if false;
+      }
+
+      match /tracks/{trackId} {
+        allow read, write: if signedIn(uid);
+      }
+
+      match /accounts/{accountId} {
+        allow read, write: if signedIn(uid);
+      }
+
+      match /categories/{categoryId} {
+        allow read, write: if signedIn(uid);
+      }
+
+      match /settings/{settingId} {
+        allow read, write: if signedIn(uid);
+      }
+
+      /* Cached Gemini narrative, one document per YYYY-MM. */
+      match /insights/{monthId} {
+        allow read, write: if signedIn(uid);
       }
     }
   }

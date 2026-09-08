@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import { Home } from './pages/Home.tsx'
+import { NotFound } from './pages/NotFound.tsx'
 import './index.css'
 
 /*
@@ -33,6 +35,8 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
+    /* A thrown route error renders deliberately instead of React Router's dev page. */
+    errorElement: <NotFound />,
     children: [
       { index: true, element: <Home /> },
       {
@@ -53,10 +57,18 @@ const router = createBrowserRouter([
       },
     ],
   },
+  /*
+  Catch-all. Hosting rewrites every path to index.html so deep links work, so a
+  mistyped URL arrives here rather than at a server 404.
+  */
+  { path: '*', element: <NotFound /> },
 ])
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    {/* Outside the router, so even a router-level failure still renders something. */}
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
   </StrictMode>,
 )

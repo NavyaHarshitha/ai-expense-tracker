@@ -19,7 +19,7 @@ export const linkButton =
   'rounded-full px-3 py-2 font-bold text-muted transition hover:bg-primary-soft hover:text-primary-dark'
 
 export const field =
-  'w-full rounded-field border border-line-strong bg-surface px-3.5 py-3 text-ink transition focus:border-primary'
+  'w-full rounded-field border border-field bg-surface px-3.5 py-3 text-ink transition focus:border-primary'
 
 export const fieldLabel = 'mb-2 block font-bold text-ink-soft'
 

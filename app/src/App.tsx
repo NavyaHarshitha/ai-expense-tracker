@@ -162,7 +162,15 @@ export default function App() {
   )
 
   if (authLoading) {
-    return <div className="grid min-h-dvh place-items-center text-muted">Loading&hellip;</div>
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="grid min-h-dvh place-items-center text-muted"
+      >
+        Loading&hellip;
+      </div>
+    )
   }
 
   if (!user || !uid) {
@@ -205,8 +213,16 @@ export default function App() {
 
   return (
     <>
+      {/* First stop for a keyboard user, visible only once focused. */}
+      <a href="#main" className="skip-link">
+        Skip to main content
+      </a>
+
       <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur-md">
-        <nav className="mx-auto flex min-h-[72px] w-[min(1100px,90%)] items-center justify-between gap-4">
+        <nav
+          aria-label="Main"
+          className="mx-auto flex min-h-[72px] w-[min(1100px,90%)] items-center justify-between gap-4"
+        >
           <span className="text-xl font-extrabold text-primary-dark">AI Expense Tracker</span>
 
           <ul className="flex list-none items-center gap-2 p-0">
@@ -239,7 +255,8 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="mx-auto w-[min(1100px,90%)] py-14">
+      {/* tabIndex -1 so the skip link can actually move focus here, not just scroll. */}
+      <main id="main" tabIndex={-1} className="mx-auto w-[min(1100px,90%)] py-14">
         <Outlet context={context} />
       </main>
 

@@ -141,6 +141,7 @@ export function CategoryManager({
               {isRenaming ? (
                 <>
                   <input
+                    aria-label={`New name for ${c.name}`}
                     className={`${field} max-w-56`}
                     value={renameDraft}
                     onChange={(e) => setRenameDraft(e.target.value)}
