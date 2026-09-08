@@ -95,9 +95,44 @@ function safeDay(value: unknown): number | undefined {
  * real day, and guessing one would silently file money on the wrong date.
  */
 export function safeDate(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined
+  /*
+  Widened deliberately.
 
-  const head = value.slice(0, 10)
+  This runs against data already in the database, written by every version of
+  this app that has ever existed. Being strict here does not protect anything -
+  the output is canonicalised either way - it just silently deletes a real
+  expense from the user's view. So anything that unambiguously denotes a day is
+  accepted and normalised: a Date, a Firestore Timestamp, and an unpadded
+  'YYYY-M-D' as well as the canonical form.
+  */
+  let text: string
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return undefined
+    text = `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(
+      value.getDate(),
+    ).padStart(2, '0')}`
+  } else if (
+    // A Firestore Timestamp, without importing the SDK into a pure module.
+    typeof value === 'object' &&
+    value !== null &&
+    'toDate' in value &&
+    typeof (value as { toDate: unknown }).toDate === 'function'
+  ) {
+    return safeDate((value as { toDate: () => Date }).toDate())
+  } else if (typeof value === 'string') {
+    text = value
+  } else {
+    return undefined
+  }
+
+  // Pad 'YYYY-M-D' into canonical form before matching.
+  const parts = text.slice(0, 10).split('-')
+  const head =
+    parts.length === 3
+      ? `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].slice(0, 2).padStart(2, '0')}`
+      : text.slice(0, 10)
+
   if (!ISO_DATE.test(head)) return undefined
 
   // Reject dates the regex allows but the calendar does not - '2026-13-45'.

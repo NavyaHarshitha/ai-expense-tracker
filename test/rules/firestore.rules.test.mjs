@@ -70,6 +70,14 @@ await check('a valid amount edit is allowed',
 await check('HARD delete is refused',
   assertFails(deleteDoc(aTxn('t1'))))
 
+console.log('\n--- legacy rows stay editable ---')
+await check('a row with NO description can still be written',
+  assertSucceeds(setDoc(aTxn('legacy'), omit(T(), 'description'))))
+await check('a row with NO categoryName can still be written',
+  assertSucceeds(setDoc(aTxn('legacy2'), omit(T(), 'categoryName'))))
+await check('but a non-string description is still refused',
+  assertFails(setDoc(aTxn('badstr'), T({ description: 42 }))))
+
 console.log('\n--- other collections still work ---')
 for (const c of ['tracks', 'accounts', 'categories', 'settings', 'insights']) {
   await check(`alice writes ${c}`,

@@ -58,8 +58,18 @@ service cloud.firestore {
       return validAmount(d.amountMinor)
         && validDate(d.occurredOn)
         && d.movement in ['expense', 'income', 'transfer', 'refund']
-        && d.description is string
-        && d.categoryName is string;
+        /*
+        Required vs merely well-typed.
+
+        The three fields above are required because a row without them is not a
+        transaction at all, and all three are money-critical. The two below are
+        checked only IF PRESENT: they are descriptive, and demanding them would
+        make an edit to some older row fail with PERMISSION_DENIED for a reason
+        that has nothing to do with the edit. Rules should refuse bad money, not
+        strand a user's existing history behind a schema they never chose.
+        */
+        && (!('description' in d) || d.description is string)
+        && (!('categoryName' in d) || d.categoryName is string);
     }
 
     match /users/{uid} {

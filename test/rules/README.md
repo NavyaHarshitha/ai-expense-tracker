@@ -17,6 +17,7 @@ Requires Java (the emulator is a JAR).
 
 ## What is covered
 
+- **Legacy rows** - a document missing a descriptive field stays writable; only the money-critical fields are required, so the rules never strand history behind a schema the user never chose.
 - **Isolation** - a second signed-in user cannot read or write any part of the
   first user's data: transactions, profile, or accounts. An unauthenticated
   caller gets nothing at all.

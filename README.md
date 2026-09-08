@@ -218,8 +218,8 @@ reaches Vertex.
 ### Tests
 
 ```
-212 unit tests   (app/src/**/*.test.ts)
- 29 rules tests  (test/rules/, against the Firestore emulator)
+213 unit tests   (app/src/**/*.test.ts)
+ 32 rules tests  (test/rules/, against the Firestore emulator)
 ```
 
 Including a hostile-input suite where every case is a defect that was actually
@@ -262,7 +262,7 @@ npm install
 cp .env.local.example .env.local     # fill in your Firebase web config
 npm run dev
 
-npm run check                        # typecheck + 212 tests
+npm run check                        # typecheck + 213 tests
 npm run build
 
 # API

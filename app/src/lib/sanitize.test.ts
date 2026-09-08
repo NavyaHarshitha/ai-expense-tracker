@@ -120,9 +120,26 @@ describe('safeInt / safeDate', () => {
     expect(safeDate('2026-02-29')).toBeUndefined() // 2026 is not a leap year
     expect(safeDate('2026-13-01')).toBeUndefined()
     expect(safeDate('2026-09-31')).toBeUndefined()
-    expect(safeDate('2026-9-9')).toBeUndefined() // unpadded is not ISO
     expect(safeDate(undefined)).toBeUndefined()
     expect(safeDate(12345)).toBeUndefined()
+    expect(safeDate('nonsense')).toBeUndefined()
+  })
+
+  /*
+  Normalisation, not strictness.
+
+  These run against rows already in the database, written by every version of
+  this app that has ever existed. Rejecting a shape that unambiguously denotes a
+  day protects nothing - the output is canonical either way - it just deletes a
+  real expense from the user's view.
+  */
+  it('normalises the shapes older writes may have left behind', () => {
+    expect(safeDate('2026-9-9')).toBe('2026-09-09')
+    expect(safeDate(new Date(2026, 8, 9))).toBe('2026-09-09')
+    // A Firestore Timestamp, duck-typed so the SDK stays out of a pure module.
+    expect(safeDate({ toDate: () => new Date(2026, 8, 9) })).toBe('2026-09-09')
+    expect(safeDate(new Date('nonsense'))).toBeUndefined()
+    expect(safeDate({ toDate: () => new Date('nonsense') })).toBeUndefined()
   })
 })
 
