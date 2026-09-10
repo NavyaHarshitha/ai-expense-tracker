@@ -1,21 +1,16 @@
 /*
 The trust boundary between Firestore and the rest of the app.
 
-Every hook used to do `{ id: d.id, ...d.data() } as Transaction` - a cast, which
-is a promise to the compiler that nothing checks. Firestore is schemaless, so
-that promise is only as good as every write that ever ran: an older build, a
-half-applied voice plan, a hand-edit in the console, or a field that simply
-never existed yet.
+Firestore is schemaless: it returns whatever was written, by any version of
+this app that ever ran. Casting a document with `as Transaction` is a promise
+to the compiler that nothing verifies.
 
-The cost of being wrong is not a type error, it is arithmetic. `undefined`
-amountMinor makes one row's total NaN, NaN propagates through every sum it
-touches, and the hero figure renders "₹NaN". A missing occurredOn is worse:
-isInMonth() called .split() on it and threw, which unmounts the whole tree.
+The cost of being wrong is arithmetic, not a type error. A non-numeric amount
+makes one row's total NaN, and NaN propagates through every sum it touches.
 
-So nothing enters the app un-checked. Each row is coerced to a well-formed
-shape, and a row too broken to repair is dropped rather than propagated - one
-lost row is a far smaller lie than a poisoned total, and it is logged so it can
-be found.
+So nothing enters the app unchecked. Each row is coerced to a well-formed
+shape, and a row too broken to repair is dropped rather than propagated: one
+lost row is a far smaller lie than a poisoned total, and it is logged.
 */
 
 import { MAX_AMOUNT_MINOR } from './money'
@@ -41,7 +36,7 @@ const ACCOUNT_KINDS: AccountKind[] = ['bank', 'cash', 'wallet', 'credit_card']
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
-/** Dev-only: a dropped row is a data bug worth seeing, not worth a user-facing error. */
+/** Dev-only: a dropped row is worth investigating, not worth interrupting the user. */
 function warn(what: string, why: string, row: unknown) {
   if (import.meta.env.DEV) console.warn(`[sanitize] dropped ${what}: ${why}`, row)
 }

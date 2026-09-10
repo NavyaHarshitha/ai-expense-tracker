@@ -81,10 +81,9 @@ export function formatINR(paise: number, opts?: { showPaise?: boolean }): string
   /*
   Never render "₹NaN".
 
-  Intl happily formats NaN and Infinity, so a single corrupt figure used to
-  reach the hero card verbatim. Sanitising on the way in from Firestore stops
-  the usual cause, but this is the last line: an em dash reads as "no value",
-  which is honest, where "₹NaN" reads as a broken app and "₹0" is a lie.
+  Intl formats NaN and Infinity happily, so a non-finite figure would reach the
+  screen verbatim. An em dash reads as "no value", which is honest; "₹0" would
+  be a lie. Rows are sanitised on the way in, so this is the last line only.
   */
   if (!Number.isFinite(paise)) return '₹—'
 

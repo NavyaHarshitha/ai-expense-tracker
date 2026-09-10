@@ -273,13 +273,9 @@ export function Dashboard() {
             )}
 
             {/*
-            Shown whenever there is one.
-
-            This was gated on there being no insight yet, so a refresh that
-            failed over an existing review reported nothing at all - the button
-            simply went back to "Refresh" and the old text stayed. Indis-
-            tinguishable from the app having hung, which is what it was taken
-            for.
+            Shown whenever there is one, including over an existing review.
+            A refresh that fails silently is indistinguishable from one that
+            hung.
             */}
             {written.error && (
               <p className="m-0 mb-2 text-sm text-danger">{written.error}</p>

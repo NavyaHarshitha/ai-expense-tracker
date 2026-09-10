@@ -64,18 +64,12 @@ export function daysRemainingInMonth(ref: Date): number {
 }
 
 /*
-Both date predicates take `string | undefined | null` deliberately.
+Both date predicates accept `string | undefined | null` deliberately.
 
-They used to take `string` and call .split() on it directly. Firestore is
-schemaless, so a document written by an older build - or a partially applied
-voice plan - can arrive with no occurredOn at all, and .split() of undefined
-throws. Thrown from inside a useMemo during render, that unmounts the entire
-tree: one malformed row, and the whole app is a white screen.
-
-Rows are sanitised on the way in now, so this should never fire. It stays
-because a date predicate returning false for a date it cannot read is correct
-behaviour, and a total that quietly omits one row beats an app that does not
-render.
+These run inside a useMemo during render, where a throw unmounts the whole
+tree. Firestore is schemaless and a document can arrive without a date, so
+they are total by construction: a date that cannot be read is simply not in
+the month. Rows are also sanitised on the way in; this is the second line.
 */
 
 /** Is an ISO 'YYYY-MM-DD' date the same calendar day as `ref`? Local time, not UTC. */
@@ -229,9 +223,8 @@ export function commitmentsRemainingThisMonthMinor(
     month's. Never zero, because the next one is always looming; never two,
     because only one is ever next.
 
-    Without this the money frees up the moment rent clears and gets spent, and
-    the 1st arrives short - which is exactly what a second "next month rent"
-    track was compensating for by hand.
+    Without this the money frees up the moment rent clears, gets spent, and the
+    1st arrives short.
     */
     if (paydayDay !== undefined && track.dueDay !== undefined && track.dueDay < paydayDay) {
       remaining += due

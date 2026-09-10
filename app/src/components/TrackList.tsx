@@ -99,15 +99,12 @@ function DayChip({ day, done }: { day?: number; done: boolean }) {
 /*
 Remove, with the choice the situation actually presents.
 
-A track nothing references is deleted outright - it was a mistake, and archiving
-mistakes just fills the archive. A track WITH history offers both: archive it
-(history intact, hidden from pickers), or move its entries somewhere else and
-delete it. Blocking delete outright was the wrong answer - a track can be a
-mistake and still have a stray row on it, which is exactly what happens when
-income lands on the only spending track.
+A track nothing references is deleted outright; archiving mistakes only fills
+the archive. A track WITH history offers both: archive it, or move its entries
+elsewhere and delete it. Both are offered because a track can be a mistake and
+still have a stray row on it.
 
-The count is shown either way. "You cannot delete this" with no reason given is
-the thing that makes an app feel broken.
+The count is shown either way, so the choice is informed.
 */
 function RemoveTrackButton({
   track,
@@ -490,11 +487,7 @@ export function TrackList({
           )
         if (group.length === 0) return null
 
-        /*
-        A running total for the group, because the question "how much of this is
-        already dealt with" was previously only answerable by reading every card
-        and adding up.
-        */
+        /* A running total, so "how much is already dealt with" is one glance. */
         const totals = group.reduce(
           (acc, t) => {
             const { used, total } = progressFor(t, transactions, today)

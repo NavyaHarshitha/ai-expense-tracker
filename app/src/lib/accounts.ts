@@ -63,9 +63,8 @@ function creditCardBalance(account: Account, rows: Transaction[]): AccountBalanc
 
     /*
     A bill payment arrives as a transfer INTO the card, so the card is the
-    DESTINATION, not the source - the source is whichever bank paid it. Checking
-    only accountId here meant payments never reduced the debt, which the test
-    caught: a card spent to Rs 7,000 and paid Rs 5,000 still read Rs 7,000.
+    DESTINATION, not the source - the source is whichever bank paid it. Both
+    sides must be checked, or a payment never reduces the debt.
     */
     if (t.movement === 'transfer') {
       if (isDestination) {

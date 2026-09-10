@@ -8,13 +8,9 @@ import { card, eyebrow } from '../lib/ui'
 The hero. This deliberately replaces "Total Spent" as the primary figure:
 total spent is a rear-view mirror, safe-to-spend is a decision.
 
-Copy rule for this file: label the number, don't justify it. Earlier versions
-explained the reasoning behind every line - why unspent money rolls over, why a
-pre-payday bill stays reserved, why the balance basis is more accurate. All of
-it was true and none of it belonged on screen. A person checking what they can
-spend before lunch is not reading three paragraphs about the arithmetic, and
-prose that defends itself makes an app feel unsure. The reasoning lives in the
-README and in these comments; the screen gets the number and its parts.
+Copy rule for this file: label the number, don't justify it. Someone checking
+what they can spend before lunch wants the figure and its parts, not an
+explanation of the arithmetic. The reasoning belongs in the README.
 */
 export function SafeToSpendCard({
   result,
@@ -31,10 +27,9 @@ export function SafeToSpendCard({
   const dayExhausted =
     result.todayAllowanceMinor > 0 && result.spentTodayMinor > result.todayAllowanceMinor
   /*
-  Clamped at BOTH ends. spentTodayMinor goes negative on a net-refund day, which
-  produced width: '-25%' - an invalid CSS length that the CSSOM drops entirely,
-  leaving the block-level bar to fill its whole track. The bar then read "day
-  fully spent" directly under a hero saying money was left.
+  Clamped at both ends. spentTodayMinor is negative on a net-refund day, and a
+  negative CSS width is invalid - the CSSOM drops the rule and the bar fills
+  its whole track, reading "fully spent" beneath a hero saying otherwise.
   */
   const dayUsedPct =
     result.todayAllowanceMinor > 0
@@ -45,9 +40,10 @@ export function SafeToSpendCard({
       : 0
 
   /*
-  Controlled, and re-synced when the stored value arrives. This was previously
-  an uncontrolled input with defaultValue, captured on first render while income
-  was still loading - so a saved value never appeared in the box.
+  Controlled, and re-synced when the stored value arrives.
+
+  Income loads asynchronously, so the first render has nothing to show. An
+  uncontrolled input would capture that empty value and never update.
   */
   const [draft, setDraft] = useState('')
 
@@ -145,7 +141,6 @@ export function SafeToSpendCard({
             <Row
               label="Commitments due"
               value={-result.committedRemainingMinor}
-              /* The hint replaces a paragraph that said the same thing at length. */
               hint={
                 result.preSalaryHeldMinor > 0
                   ? `incl. ${formatINR(result.preSalaryHeldMinor)} held for bills before payday`

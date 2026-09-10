@@ -458,11 +458,9 @@ export function QuickAdd({
           {/*
           The same planner, reached from a keyboard.
 
-          Everything the assistant can do was previously behind the microphone,
-          so anyone without one - a shared office, a denied permission, a
-          desktop with no input device - could not use the feature at all, and
-          could only ever see the manual form. The text path already existed
-          for the "not what I said" correction; this simply gives it a way in.
+          Voice is the intended input, but a microphone is not always available
+          or wanted - a shared office, a declined permission, a desktop without
+          one. This sends the identical instruction to the identical endpoint.
           */}
           <form
             className="flex gap-2"
