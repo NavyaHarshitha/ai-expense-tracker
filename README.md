@@ -64,7 +64,7 @@ arrives short.
 |---|---|
 | **Talk to it** | "Spent 250 on lunch and 1200 on groceries" → two confirmed rows. Speech → structured actions via Gemini function calling. |
 | **Voice that acts** | Not just capture. Create a track, rename a category, correct yesterday's amount, set your balance — all spoken. |
-| **Photograph a receipt** | Camera → Gemini vision → line items and total. |
+| **Photograph a receipt** | Camera → Gemini vision → merchant and total as one expense, itemisation kept in the note. |
 | **Four track types** | Spending (monthly limit), commitment (fixed, dated), goal (target), project (accumulate → spend down → close). |
 | **Multiple accounts** | Bank, cash, wallet, credit card. Cards invert: spending raises the debt, paying lowers it. |
 | **Search at scale** | Category, track, movement and free text, single-pass over a prebuilt index. |
