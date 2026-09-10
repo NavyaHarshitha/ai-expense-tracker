@@ -45,6 +45,8 @@ as utilities instead of hand-written classes.
   --color-danger: #b3392f;
   /* Tinted background behind a destructive action or an error. */
   --color-danger-soft: #fbeeec;
+  /* Soft companion to --color-good, mirroring --color-danger-soft. */
+  --color-good-soft: #f0f6ed;
   /* A caution that is not an error - near-duplicate names, burn-rate notices. */
   /* 4.32:1 on canvas before, a hair under AA. */
   --color-warn: #966709;
@@ -112,6 +114,8 @@ not for depth - brightens further still.
 
       --color-danger: #f08a8a;
       --color-danger-soft: #3d2836;
+    --color-good-soft: #26382b;
+      --color-good-soft: #26382b;
       --color-warn: #e0b45c;
       --color-good: #8fd0a0;
 
