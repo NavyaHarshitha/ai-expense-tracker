@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { ArchivedActions } from './ArchivedActions'
+
 import { ACCOUNT_KIND_LABELS, type AccountsSummary } from '../lib/accounts'
 import { formatINR, toPaise } from '../lib/money'
 import type { Account, AccountKind } from '../lib/types'
@@ -168,13 +170,15 @@ export function AccountsPanel({
                 <li key={a.id} className="flex flex-wrap items-center gap-3 text-muted">
                   <span className="font-bold text-ink-soft">{a.name}</span>
                   <span className="text-sm">{ACCOUNT_KIND_LABELS[a.kind]}</span>
-                  <button
-                    type="button"
-                    className={`${linkButton} ml-auto`}
-                    onClick={() => onRestore(a.id)}
-                  >
-                    Restore
-                  </button>
+                  <ArchivedActions
+                    onRestore={() => onRestore(a.id)}
+                    onDelete={() => onDelete(a.id)}
+                    consequence={
+                      (usageByAccount.get(a.id) ?? 0) > 0
+                        ? `${usageByAccount.get(a.id)} entries will lose their account`
+                        : undefined
+                    }
+                  />
                 </li>
               ))}
             </ul>

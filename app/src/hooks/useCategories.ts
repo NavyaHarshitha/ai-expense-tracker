@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
@@ -139,6 +140,17 @@ export function useCategories(uid: string | undefined, seeded: boolean | undefin
     await updateDoc(doc(db, userPath(uid, 'categories'), id), { archived: true })
   }
 
+  /*
+  Hard delete, and safe to offer without reassignment.
+
+  Transactions cite a category by NAME rather than by id, so removing the
+  document leaves every historical row reading exactly as it did. This is the
+  one archive where deleting cannot orphan anything.
+  */
+  async function deleteCategory(uid: string, id: string) {
+    await deleteDoc(doc(db, userPath(uid, 'categories'), id))
+  }
+
   async function restoreCategory(uid: string, id: string) {
     await updateDoc(doc(db, userPath(uid, 'categories'), id), { archived: false })
   }
@@ -153,5 +165,6 @@ export function useCategories(uid: string | undefined, seeded: boolean | undefin
     renameCategory,
     archiveCategory,
     restoreCategory,
+    deleteCategory,
   }
 }

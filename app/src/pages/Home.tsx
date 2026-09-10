@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { useApp } from '../App'
 import { AccountsPanel } from '../components/AccountsPanel'
+import { ArchivedActions } from '../components/ArchivedActions'
 import { CategoryManager } from '../components/CategoryManager'
 import { SafeToSpendCard } from '../components/SafeToSpendCard'
 import { TrackForm } from '../components/TrackForm'
@@ -46,6 +47,7 @@ export function Home() {
     renameCategory,
     archiveCategory,
     restoreCategory,
+    deleteCategory,
   } = useApp()
 
   /* How many rows carry each category, so archiving and renaming are informed. */
@@ -244,6 +246,7 @@ export function Home() {
           onRename={(category, name) => renameCategory(uid, category, name)}
           onArchive={(id) => archiveCategory(uid, id)}
           onRestore={(id) => restoreCategory(uid, id)}
+          onDelete={(id) => deleteCategory(uid, id)}
         />
       </section>
 
@@ -276,13 +279,15 @@ export function Home() {
                       {TRACK_TYPE_LABELS[t.type].toLowerCase()} &middot; {used} entr
                       {used === 1 ? 'y' : 'ies'}
                     </span>
-                    <button
-                      type="button"
-                      className={`${linkButton} ml-auto`}
-                      onClick={() => restoreTrack(uid, t.id)}
-                    >
-                      Restore
-                    </button>
+                    <ArchivedActions
+                      onRestore={() => restoreTrack(uid, t.id)}
+                      onDelete={() => deleteTrack(uid, t.id)}
+                      consequence={
+                        used > 0
+                          ? `${used} entr${used === 1 ? 'y' : 'ies'} will show as Unassigned`
+                          : undefined
+                      }
+                    />
                   </li>
                 )
               })}

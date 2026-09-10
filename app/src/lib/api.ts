@@ -68,7 +68,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
       signal: controller.signal,
     })
-  } catch (e) {
+  } catch {
     // An abort and a genuine network failure both land here.
     throw new ApiError(
       controller.signal.aborted

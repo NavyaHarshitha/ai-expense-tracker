@@ -53,6 +53,7 @@ export interface AppContext {
   renameCategory: (uid: string, category: Category, name: string) => Promise<{ rowsUpdated: number }>
   archiveCategory: (uid: string, id: string) => Promise<void>
   restoreCategory: (uid: string, id: string) => Promise<void>
+  deleteCategory: (uid: string, id: string) => Promise<void>
   createAccount: (uid: string, account: Omit<Account, 'id'>) => Promise<void>
   updateAccount: (uid: string, id: string, patch: Partial<Account>) => Promise<void>
   setPrimaryAccount: (uid: string, id: string) => Promise<void>
@@ -105,6 +106,7 @@ export default function App() {
     renameCategory,
     archiveCategory,
     restoreCategory,
+    deleteCategory,
   } = useCategories(uid, categoriesSeeded)
 
   const {
@@ -216,6 +218,7 @@ export default function App() {
     renameCategory,
     archiveCategory,
     restoreCategory,
+    deleteCategory,
     createAccount,
     updateAccount,
     setPrimaryAccount,

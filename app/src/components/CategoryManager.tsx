@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 
+import { ArchivedActions } from './ArchivedActions'
 import { categoryNames, checkDuplicate } from '../lib/categories'
 import type { Category } from '../lib/types'
 import { cardPadded, field, fieldLabel, linkButton, primaryButton, sectionTitle } from '../lib/ui'
@@ -19,6 +20,7 @@ export function CategoryManager({
   onRename,
   onArchive,
   onRestore,
+  onDelete,
 }: {
   categories: Category[]
   /** How many transactions carry each name, so archiving is an informed choice. */
@@ -27,6 +29,7 @@ export function CategoryManager({
   onRename: (category: Category, name: string) => Promise<{ rowsUpdated: number }>
   onArchive: (id: string) => Promise<void>
   onRestore: (id: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -223,11 +226,12 @@ export function CategoryManager({
           {showArchived && (
             <ul className="m-0 mt-2 grid list-none gap-2 p-0">
               {archived.map((c) => (
-                <li key={c.id} className="flex items-center gap-3 text-muted">
-                  <span className="flex-1">{c.name}</span>
-                  <button type="button" className={linkButton} onClick={() => onRestore(c.id)}>
-                    Restore
-                  </button>
+                <li key={c.id} className="flex flex-wrap items-center gap-3 text-muted">
+                  <span className="text-ink-soft">{c.name}</span>
+                  <ArchivedActions
+                    onRestore={() => onRestore(c.id)}
+                    onDelete={() => onDelete(c.id)}
+                  />
                 </li>
               ))}
             </ul>
