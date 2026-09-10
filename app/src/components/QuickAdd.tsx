@@ -23,7 +23,15 @@ import {
   type Track,
   type Transaction,
 } from '../lib/types'
-import { cardPadded, field, fieldLabel, linkButton, primaryButton, sectionTitle } from '../lib/ui'
+import {
+  cardPadded,
+  field,
+  fieldLabel,
+  linkButton,
+  primaryButton,
+  secondaryButton,
+  sectionTitle,
+} from '../lib/ui'
 
 function todayIso() {
   // Local date, not UTC - an expense at 1am IST belongs to today, not yesterday.
@@ -181,6 +189,7 @@ export function QuickAdd({
   // Which input produced the current transcript, so the panel can say 'Heard' or 'Read'.
   const [inputKind, setInputKind] = useState<'voice' | 'receipt'>('voice')
   const [replanning, setReplanning] = useState(false)
+  const [typed, setTyped] = useState('')
   const [parseError, setParseError] = useState<string | null>(null)
 
   const executor = usePlanExecutor(uid, tracks, categoryDocs, onRenameCategory, onAdd)
@@ -445,6 +454,45 @@ export function QuickAdd({
               setParseError(null)
             }}
           />
+
+          {/*
+          The same planner, reached from a keyboard.
+
+          Everything the assistant can do was previously behind the microphone,
+          so anyone without one - a shared office, a denied permission, a
+          desktop with no input device - could not use the feature at all, and
+          could only ever see the manual form. The text path already existed
+          for the "not what I said" correction; this simply gives it a way in.
+          */}
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const text = typed.trim()
+              if (!text || replanning) return
+              setTyped('')
+              handleRetry(text)
+            }}
+          >
+            <label className="sr-only" htmlFor="typed-instruction">
+              Type an instruction
+            </label>
+            <input
+              id="typed-instruction"
+              className={field}
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              placeholder="…or type it: “spent 250 on lunch”"
+              disabled={replanning}
+            />
+            <button
+              type="submit"
+              className={secondaryButton}
+              disabled={replanning || typed.trim() === ''}
+            >
+              {replanning ? 'Reading…' : 'Send'}
+            </button>
+          </form>
 
           <ReceiptButton
             state={receipt.state}
