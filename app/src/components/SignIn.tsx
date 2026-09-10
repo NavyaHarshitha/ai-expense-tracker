@@ -6,7 +6,7 @@ export function SignIn({ onSignIn, error }: { onSignIn: () => void; error: strin
       className="grid min-h-dvh place-items-center bg-canvas p-6"
     >
       <div className={`${cardPadded} w-[min(420px,100%)] text-center`}>
-        <h1 className="mb-4 text-3xl font-bold tracking-tight text-ink">AI Expense Tracker</h1>
+        <h1 className="mb-4 text-3xl font-bold tracking-tight text-ink">Safe to Spend</h1>
         <p className="text-muted">
           Know what&rsquo;s safe to spend today &mdash; after your EMIs, savings and plans.
         </p>

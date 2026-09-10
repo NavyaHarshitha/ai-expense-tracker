@@ -1,6 +1,6 @@
 {
-  "name": "AI Expense Tracker",
-  "short_name": "Expenses",
+  "name": "Safe to Spend",
+  "short_name": "Safe to Spend",
   "description": "An expense tracker you talk to. Know what is safe to spend today, after your EMIs, SIPs and savings.",
   "start_url": "/",
   "scope": "/",

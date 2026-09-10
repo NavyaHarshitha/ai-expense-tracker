@@ -31,7 +31,7 @@ from limits import (
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="AI Expense Tracker API", version="1.0.0")
+app = FastAPI(title="Safe to Spend API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

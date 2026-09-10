@@ -1,4 +1,4 @@
-# AI Expense Tracker
+# Safe to Spend
 
 An expense tracker you talk to.
 

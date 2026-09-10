@@ -223,7 +223,7 @@ export default function App() {
           aria-label="Main"
           className="mx-auto flex min-h-[72px] w-[min(1100px,90%)] items-center justify-between gap-4"
         >
-          <span className="text-xl font-extrabold text-primary-dark">AI Expense Tracker</span>
+          <span className="text-xl font-extrabold text-primary-dark">Safe to Spend</span>
 
           <ul className="flex list-none items-center gap-2 p-0">
             {NAV.map((item) => (
