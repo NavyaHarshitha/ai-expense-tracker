@@ -248,8 +248,7 @@ function ConfirmCard({
 
       {!amountValid && (
         <p className="m-0 mt-2 text-sm font-bold text-danger">
-          Enter an amount greater than zero. To record money coming back, save it and change
-          the type to Refund.
+          Enter an amount greater than zero.
         </p>
       )}
     </div>

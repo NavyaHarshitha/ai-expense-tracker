@@ -46,8 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </p>
           <h1 className="mt-4 mb-2 text-2xl font-bold text-ink">Something broke on this screen</h1>
           <p className="m-0 text-muted">
-            Your data is safe &mdash; nothing is stored in this page, it all lives in your
-            account. Reloading almost always fixes it.
+            Your data is safe. Reloading usually fixes it.
           </p>
 
           {import.meta.env.DEV && (

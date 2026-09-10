@@ -47,8 +47,7 @@ export function AccountsPanel({
       <section className={`${card} p-6`}>
         <span className={eyebrow}>Accounts</span>
         <p className="mt-2 mb-4 text-muted">
-          Add each account you actually use &mdash; bank, cash, wallet, credit card. Each keeps
-          its own balance, so you can see whether the right account will cover what leaves it.
+          Bank, cash, wallet or credit card.
         </p>
         <button type="button" className={primaryButton} onClick={() => setAdding(true)}>
           Add an account
@@ -167,10 +166,6 @@ export function AccountsPanel({
         />
       )}
 
-      <p className="mt-4 mb-0 text-sm text-muted">
-        A credit card shows what you <strong>owe</strong>, not what you hold &mdash; spending on
-        one raises it and paying the bill lowers it, so card spending never inflates your cash.
-      </p>
     </section>
   )
 }
@@ -326,8 +321,7 @@ function AccountForm({
       )}
 
       <p className="m-0 text-sm text-muted">
-        Anything logged before this date will not affect the figure &mdash; the same
-        re-anchoring the single balance used.
+        Entries dated before this are ignored.
       </p>
 
       <div className="flex flex-wrap items-center gap-3">

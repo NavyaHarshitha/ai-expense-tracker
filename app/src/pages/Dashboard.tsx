@@ -123,8 +123,7 @@ export function Dashboard() {
         <section className={`${card} p-6`}>
           <h2 className={`${sectionTitle} mb-1`}>Where it went</h2>
           <p className="mb-4 text-sm text-muted">
-            Discretionary spending only. EMIs, rent and SIPs were reserved before the month
-            started, so they are not decisions this chart can help you with.
+            Discretionary spending only &mdash; commitments are excluded.
           </p>
 
           <div className="h-64">
@@ -296,8 +295,7 @@ export function Dashboard() {
                 )}
 
                 <p className="mt-4 mb-0 text-sm text-muted">
-                  Written from the figures below, never calculated by the model &mdash; if a
-                  number here disagrees with a card, trust the card.
+                  Written from the figures below.
                 </p>
               </>
             )}
@@ -320,8 +318,7 @@ export function Dashboard() {
         </ul>
 
         <p className="mt-4 text-sm text-muted">
-          The cards above are rule-based, derived directly from your transactions. Asking
-          questions in your own words is still to come.
+          
         </p>
       </section>
     </div>

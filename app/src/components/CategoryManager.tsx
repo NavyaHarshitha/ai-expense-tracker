@@ -206,8 +206,7 @@ export function CategoryManager({
       </ul>
 
       <p className="mt-4 mb-0 text-sm text-muted">
-        Archiving stops a category being offered for new entries. Past entries keep the name they
-        were filed under, so your history stays truthful.
+        Archived categories stay on past entries but aren&rsquo;t offered for new ones.
       </p>
 
       {/* ---- archived ---- */}

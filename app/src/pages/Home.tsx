@@ -135,14 +135,23 @@ export function Home() {
 
       {transactions.length === 0 && tracks.length === 0 && (
         <section className={`${card} p-6 text-center`}>
-          <h2 className="mb-2 text-xl font-bold text-ink">Start with some data</h2>
-          <p className="mx-auto mb-5 max-w-lg text-muted">
-            Seed two months of realistic history to see how tracks and Safe-to-Spend behave, then
-            replace it with your own.
+          <h2 className="mb-2 text-xl font-bold text-ink">Set up your month</h2>
+          <p className="mx-auto mb-5 max-w-md text-muted">
+            Add your accounts and the bills that repeat, then start logging.
           </p>
-          <button type="button" className={primaryButton} onClick={seed} disabled={seeding}>
-            {seeding ? 'Seeding…' : 'Seed demo data'}
-          </button>
+          <Link to="/add" className={primaryButton}>
+            Add your first expense
+          </Link>
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              className={`${secondaryButton} ml-3`}
+              onClick={seed}
+              disabled={seeding}
+            >
+              {seeding ? 'Seeding…' : 'Seed demo data'}
+            </button>
+          )}
         </section>
       )}
 
@@ -198,11 +207,7 @@ export function Home() {
       {commitments.length > 0 && (
         <section>
           <h2 className={sectionTitle}>Commitments</h2>
-          <p className="-mt-3 mb-4 text-muted">
-            Reserved before anything else, so they can never be accidentally spent. Each one
-            repeats every month &mdash; there is no need for a separate track for next
-            month&rsquo;s rent.
-          </p>
+          <p className="-mt-3 mb-3 text-muted">Repeats every month. Reserved before anything else.</p>
           <TrackList {...listProps} only={['commitment']} />
         </section>
       )}
@@ -246,7 +251,7 @@ export function Home() {
         />
       </section>
 
-      {transactions.length === 0 && tracks.length > 0 && (
+      {import.meta.env.DEV && transactions.length === 0 && tracks.length > 0 && (
         <button type="button" className={secondaryButton} onClick={seed} disabled={seeding}>
           {seeding ? 'Seeding…' : 'Seed demo data (2 months)'}
         </button>

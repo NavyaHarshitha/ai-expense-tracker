@@ -492,8 +492,7 @@ export function QuickAdd({
 
       {tracks.length === 0 && !editing ? (
         <p className="m-0 text-center text-muted">
-          No tracks yet. Speak to set one up &mdash; try &ldquo;rent is 18000 due on the 5th&rdquo;
-          &mdash; or add one by hand on the Home page.
+          No tracks yet. Try &ldquo;rent is 18000 due on the 5th&rdquo;, or add one on the Home page.
         </p>
       ) : (
         <>

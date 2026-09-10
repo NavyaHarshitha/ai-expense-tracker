@@ -467,7 +467,7 @@ export function TrackList({
     return (
       <div className="rounded-card border border-dashed border-line-strong p-8 text-center">
         <p className="m-0 text-muted">
-          Nothing here yet. Add a track below, or seed demo data to see how it works.
+          Nothing here yet. Add one below.
         </p>
       </div>
     )

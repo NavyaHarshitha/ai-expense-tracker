@@ -43,8 +43,7 @@ export function BalanceCard({
       <section className={`${card} p-6`}>
         <span className={eyebrow}>Bank balance</span>
         <p className="mt-2 mb-4 text-muted">
-          Tell it what your account holds right now and it will keep a running figure from
-          everything you log after that.
+          Enter what your account holds now.
         </p>
         <button type="button" className={primaryButton} onClick={() => setOpen(true)}>
           Set balance
@@ -85,8 +84,7 @@ export function BalanceCard({
           </p>
 
           <p className="mt-2 mb-0 text-sm text-muted">
-            Computed from what you&rsquo;ve logged, not read from your bank &mdash; so if it has
-            drifted, correct it and it re-bases from there.
+            If it has drifted, update it.
           </p>
         </>
       )}
@@ -118,7 +116,7 @@ export function BalanceCard({
           </label>
 
           <p className="m-0 text-sm text-muted">
-            Anything logged before this date stops affecting the figure.
+            Entries dated before this are ignored.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">

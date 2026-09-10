@@ -7,6 +7,14 @@ import { card, eyebrow } from '../lib/ui'
 /*
 The hero. This deliberately replaces "Total Spent" as the primary figure:
 total spent is a rear-view mirror, safe-to-spend is a decision.
+
+Copy rule for this file: label the number, don't justify it. Earlier versions
+explained the reasoning behind every line - why unspent money rolls over, why a
+pre-payday bill stays reserved, why the balance basis is more accurate. All of
+it was true and none of it belonged on screen. A person checking what they can
+spend before lunch is not reading three paragraphs about the arithmetic, and
+prose that defends itself makes an app feel unsure. The reasoning lives in the
+README and in these comments; the screen gets the number and its parts.
 */
 export function SafeToSpendCard({
   result,
@@ -54,7 +62,7 @@ export function SafeToSpendCard({
   }
 
   return (
-    <section aria-labelledby="sts-heading" className={`${card} border-l-4 border-l-primary p-6`}>
+    <section aria-labelledby="sts-heading" className={`${card} border-l-4 border-l-primary p-5`}>
       <h2 id="sts-heading" className={eyebrow}>
         Safe to spend today
       </h2>
@@ -64,70 +72,39 @@ export function SafeToSpendCard({
       saving an expense, a Firestore push from another device, or midnight
       rolling the day over. Sighted users see it move; without aria-live a
       screen-reader user is simply never told.
-
-      The visible text is the amount alone - big and glanceable. The label
-      carries the whole sentence, so it is announced as "Safe to spend today,
-      Rs 410" rather than a bare number with no subject.
       */}
-      <p
-        role="status"
-        aria-live="polite"
-        aria-label={`Safe to spend today: ${formatINR(result.leftTodayMinor)}`}
-        className={`tnum m-0 mt-2 text-5xl font-extrabold tracking-tight sm:text-6xl ${
-          overspent || dayExhausted ? 'text-danger' : 'text-primary-dark'
-        }`}
-      >
-        {formatINR(result.leftTodayMinor)}
-      </p>
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p
+          role="status"
+          aria-live="polite"
+          aria-label={`Safe to spend today: ${formatINR(result.leftTodayMinor)}`}
+          className={`tnum m-0 text-5xl font-extrabold tracking-tight sm:text-6xl ${
+            overspent || dayExhausted ? 'text-danger' : 'text-primary-dark'
+          }`}
+        >
+          {formatINR(result.leftTodayMinor)}
+        </p>
 
-      <p className="mt-2 text-muted">
-        {overspent ? (
-          <>
-            You&rsquo;re over by{' '}
-            <strong className="tnum text-ink">{formatINR(-result.safeToSpendMinor)}</strong> this
-            month
-          </>
-        ) : (
-          <>
-            <strong className="tnum text-ink">{formatINR(result.safeToSpendMinor)}</strong> left
-            across {result.daysRemaining} day{result.daysRemaining === 1 ? '' : 's'}
-          </>
-        )}
-      </p>
+        <p className="m-0 text-sm text-muted">
+          {overspent ? (
+            <>
+              over by{' '}
+              <strong className="tnum text-danger">{formatINR(-result.safeToSpendMinor)}</strong>{' '}
+              this month
+            </>
+          ) : (
+            <>
+              <strong className="tnum text-ink">{formatINR(result.safeToSpendMinor)}</strong> left ·{' '}
+              {result.daysRemaining} day{result.daysRemaining === 1 ? '' : 's'} to go
+            </>
+          )}
+        </p>
+      </div>
 
-      {/* What today has cost so far, against what today was worth. */}
+      {/* Today against today's share. */}
       {result.todayAllowanceMinor > 0 && (
-        <div className="mt-4">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-muted">
-              {result.spentTodayMinor < 0 ? (
-                <>
-                  Refunds today put{' '}
-                  <strong className="tnum text-good">{formatINR(-result.spentTodayMinor)}</strong>{' '}
-                  back
-                </>
-              ) : result.spentTodayMinor > 0 ? (
-                <>
-                  <strong className="tnum text-ink">{formatINR(result.spentTodayMinor)}</strong> of{' '}
-                  <span className="tnum">{formatINR(result.todayAllowanceMinor)}</span> spent today
-                </>
-              ) : (
-                <>
-                  Today&rsquo;s share is{' '}
-                  <span className="tnum font-bold text-ink">
-                    {formatINR(result.todayAllowanceMinor)}
-                  </span>
-                </>
-              )}
-            </span>
-            {dayExhausted && (
-              <span className="font-bold text-danger">
-                Over by {formatINR(result.spentTodayMinor - result.todayAllowanceMinor)}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-lavender">
+        <div className="mt-3">
+          <div className="h-1.5 overflow-hidden rounded-full bg-lavender">
             <div
               className={`h-full rounded-full transition-[width] duration-300 ${
                 dayExhausted ? 'bg-danger' : 'bg-primary'
@@ -136,91 +113,91 @@ export function SafeToSpendCard({
             />
           </div>
 
-          <p className="m-0 mt-2 text-sm text-muted">
-            Anything you don&rsquo;t spend today rolls into tomorrow &mdash; what&rsquo;s left
-            simply divides across one fewer day.
+          <p className="m-0 mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
+            <span>
+              {result.spentTodayMinor < 0 ? (
+                <>
+                  <strong className="tnum text-good">{formatINR(-result.spentTodayMinor)}</strong>{' '}
+                  refunded today
+                </>
+              ) : (
+                <>
+                  <strong className="tnum text-ink">{formatINR(result.spentTodayMinor)}</strong> of{' '}
+                  <span className="tnum">{formatINR(result.todayAllowanceMinor)}</span> spent today
+                </>
+              )}
+            </span>
+            {dayExhausted && (
+              <span className="font-bold text-danger">
+                Over by {formatINR(result.spentTodayMinor - result.todayAllowanceMinor)}
+              </span>
+            )}
           </p>
         </div>
       )}
 
       {/* The arithmetic, shown rather than hidden - a number you can't check is a number you won't trust. */}
-      <dl className="mt-6 grid gap-x-6 gap-y-3 border-t border-line pt-5 sm:grid-cols-2">
+      <dl className="mt-4 grid gap-x-8 gap-y-2 border-t border-line pt-4 sm:grid-cols-2">
         {result.basis === 'balance' ? (
           <>
             <Row label="In your accounts" value={result.cashMinor} />
             {result.owedMinor > 0 && <Row label="Owed on cards" value={-result.owedMinor} />}
             <Row
-              label={
-                result.preSalaryHeldMinor > 0
-                  ? 'Commitments due, incl. pre-payday'
-                  : 'Commitments still due'
-              }
+              label="Commitments due"
               value={-result.committedRemainingMinor}
+              /* The hint replaces a paragraph that said the same thing at length. */
+              hint={
+                result.preSalaryHeldMinor > 0
+                  ? `incl. ${formatINR(result.preSalaryHeldMinor)} held for bills before payday`
+                  : undefined
+              }
             />
             <Row label="Savings still to move" value={-result.savingsRemainingMinor} />
             {result.setAsideMinor > 0 && (
-              <Row label="Set aside in goals" value={-result.setAsideMinor} />
+              <Row
+                label="Set aside in goals"
+                value={-result.setAsideMinor}
+                hint="in your accounts, but spoken for"
+              />
             )}
           </>
         ) : (
           <>
-        <div className="flex items-center justify-between gap-4">
-          <dt className="font-bold text-muted">Monthly income</dt>
-          <dd className="m-0">
-            <label className="sr-only" htmlFor="income">
-              Monthly income in rupees
-            </label>
-            <input
-              id="income"
-              className="tnum w-32 rounded-field border border-line-strong bg-surface px-3 py-2 text-right font-bold text-ink focus:border-primary"
-              type="number"
-              min="0"
-              step="1000"
-              value={draft}
-              placeholder="0"
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitIncome}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur()
-              }}
-            />
-          </dd>
-        </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-bold text-muted">Monthly income</dt>
+              <dd className="m-0">
+                <label className="sr-only" htmlFor="income">
+                  Monthly income in rupees
+                </label>
+                <input
+                  id="income"
+                  className="tnum w-28 rounded-field border border-field bg-surface px-3 py-1.5 text-right font-bold text-ink focus:border-primary"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={draft}
+                  placeholder="0"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={commitIncome}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur()
+                  }}
+                />
+              </dd>
+            </div>
 
-        <Row label="Commitments reserved" value={-result.committedMinor} />
-        <Row label="Savings planned" value={-result.plannedSavingsMinor} />
-        <Row label="Spent this month" value={-result.spentMinor} />
+            <Row label="Commitments reserved" value={-result.committedMinor} />
+            <Row label="Savings planned" value={-result.plannedSavingsMinor} />
+            <Row label="Spent this month" value={-result.spentMinor} />
           </>
         )}
       </dl>
 
-      {/*
-      Say WHY the money is missing. Held-back cash that just disappears from the
-      figure looks like a bug; named, it looks like the protection it is.
-      */}
-      {result.setAsideMinor > 0 && (
-        <p className="mt-4 mb-0 rounded-field bg-primary-soft px-4 py-3 text-sm text-ink-soft">
-          <strong className="tnum">{formatINR(result.setAsideMinor)}</strong> is already
-          saved toward your goals and still sitting in your accounts. Your balance is
-          right &mdash; the money is genuinely there &mdash; it is just spoken for, so
-          it is not offered here.
-        </p>
-      )}
-
-      {result.preSalaryHeldMinor > 0 && (
-        <p className="mt-4 mb-0 rounded-field bg-primary-soft px-4 py-3 text-sm text-ink-soft">
-          <strong className="tnum">{formatINR(result.preSalaryHeldMinor)}</strong> of that is held
-          for bills that fall due before your salary on the {paydayDay}
-          {ordinal(paydayDay)} &mdash; they come out of this month&rsquo;s money, not next
-          month&rsquo;s, so it stays reserved even once this month&rsquo;s have been paid.
-        </p>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted">
-        <label htmlFor="payday">Salary lands on day</label>
+      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted">
+        <label htmlFor="payday">Salary lands on the</label>
         <input
           id="payday"
-          className="tnum w-16 rounded border border-line-strong bg-surface px-2 py-1 text-right text-ink"
+          className="tnum w-14 rounded border border-field bg-surface px-2 py-1 text-right text-ink"
           type="number"
           min="1"
           max="31"
@@ -231,46 +208,28 @@ export function SafeToSpendCard({
             onPaydayChange(raw === '' ? null : Number(raw))
           }}
         />
-        <span>of the month</span>
+        <span>of each month</span>
+
         {paydayDay === undefined && (
-          <span className="text-warn">
-            Set this and bills due before payday get held back a month early.
-          </span>
+          <span className="text-warn">Set this to handle bills due before payday.</span>
+        )}
+
+        {result.basis === 'income' && (
+          <span className="ml-auto">Add an account to use your real balance.</span>
         )}
       </div>
-
-      <p className="mt-4 mb-0 text-sm text-muted">
-        {result.basis === 'balance' ? (
-          <>
-            Built from what your accounts actually hold, so it already includes anything left
-            over from last month and knows whether your salary has landed. Only commitments
-            that <em>haven&rsquo;t gone out yet</em> are subtracted &mdash; the ones already
-            paid have reduced your balance.
-          </>
-        ) : (
-          <>
-            Built from your typed monthly income. Add an account on the Home page and this
-            switches to your real balance, which is more accurate.
-          </>
-        )}
-      </p>
     </section>
   )
 }
 
-function ordinal(day?: number): string {
-  if (day === undefined) return ''
-  if (day % 10 === 1 && day !== 11) return 'st'
-  if (day % 10 === 2 && day !== 12) return 'nd'
-  if (day % 10 === 3 && day !== 13) return 'rd'
-  return 'th'
-}
-
-function Row({ label, value }: { label: string; value: number }) {
+function Row({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="font-bold text-muted">{label}</dt>
-      <dd className="tnum m-0 font-bold text-ink">{formatINR(value)}</dd>
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="font-bold text-muted">
+        {label}
+        {hint && <span className="block text-xs font-medium text-muted/80">{hint}</span>}
+      </dt>
+      <dd className="tnum m-0 shrink-0 font-bold text-ink">{formatINR(value)}</dd>
     </div>
   )
 }

@@ -276,8 +276,7 @@ export function TrackForm({
               placeholder="60000"
             />
             <p className="mt-1 mb-2 text-sm text-muted">
-              Money already in this pot. Counts toward the target without inventing a
-              transaction that never happened.
+              Counts toward the target.
             </p>
 
             {/*
@@ -294,11 +293,10 @@ export function TrackForm({
                 onChange={(e) => setOpeningInAccounts(e.target.checked)}
               />
               <span>
-                This money is sitting in one of my accounts
+                It&rsquo;s in one of my accounts
                 <span className="mt-0.5 block text-muted">
-                  Set it aside so Safe-to-Spend stops offering it. Your account balance
-                  is unchanged &mdash; the money really is still in the bank. Untick if
-                  it&rsquo;s held somewhere the app doesn&rsquo;t track, like a mutual fund.
+                  Holds it back from Safe-to-Spend. Untick if it sits outside the app,
+                  like a mutual fund.
                 </span>
               </span>
             </label>
@@ -312,7 +310,7 @@ export function TrackForm({
               checked={!raidable}
               onChange={(e) => setRaidable(!e.target.checked)}
             />
-            Lock this goal &mdash; keep it out of spending advice (e.g. an emergency fund)
+            Lock this goal &mdash; keep it out of spending advice
           </label>
         )}
 
@@ -339,8 +337,7 @@ export function TrackForm({
 
         {editing && (
           <p className="m-0 text-sm text-muted">
-            Archiving hides it from pickers and stops it counting toward Safe-to-Spend. Its history
-            stays intact.
+            Archiving keeps the history and hides the track.
           </p>
         )}
       </form>
