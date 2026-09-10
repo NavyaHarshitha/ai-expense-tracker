@@ -22,22 +22,28 @@ two accounts actually has.
 */
 export function AccountsPanel({
   summary,
+  archived,
   usageByAccount,
   onCreate,
   onUpdate,
   onSetPrimary,
   onArchive,
+  onRestore,
   onDelete,
 }: {
   summary: AccountsSummary
+  /** Archived accounts, so archiving is reversible rather than a one-way door. */
+  archived: Account[]
   usageByAccount: Map<string, number>
   onCreate: (account: Omit<Account, 'id'>) => Promise<void>
   onUpdate: (id: string, patch: Partial<Account>) => Promise<void>
   onSetPrimary: (id: string) => Promise<void>
   onArchive: (id: string) => Promise<void>
+  onRestore: (id: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }) {
   const [adding, setAdding] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
 
   const hasCards = summary.balances.some((b) => b.account.kind === 'credit_card')
@@ -149,6 +155,32 @@ export function AccountsPanel({
           )
         })}
       </ul>
+
+      {archived.length > 0 && (
+        <div className="mt-4">
+          <button type="button" className={linkButton} onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? 'Hide' : 'Show'} archived accounts ({archived.length})
+          </button>
+
+          {showArchived && (
+            <ul className="m-0 mt-2 grid list-none gap-2 p-0">
+              {archived.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center gap-3 text-muted">
+                  <span className="font-bold text-ink-soft">{a.name}</span>
+                  <span className="text-sm">{ACCOUNT_KIND_LABELS[a.kind]}</span>
+                  <button
+                    type="button"
+                    className={`${linkButton} ml-auto`}
+                    onClick={() => onRestore(a.id)}
+                  >
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {(adding || editing) && (
         <AccountForm

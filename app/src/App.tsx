@@ -20,11 +20,14 @@ import type { Account, Category, Track, Transaction } from './lib/types'
 export interface AppContext {
   uid: string
   tracks: Track[]
+  /** Archived tracks, so they can be seen and restored rather than lost. */
+  archivedTracks: Track[]
   transactions: Transaction[]
   result: SafeToSpendResult
   balance: BalanceResult
   categories: Category[]
   accounts: Account[]
+  archivedAccounts: Account[]
   accountsSummary: AccountsSummary
   /** Charts need the actual colour in JS, not through a CSS variable. */
   theme: ResolvedTheme
@@ -32,6 +35,7 @@ export interface AppContext {
   createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
   archiveTrack: (uid: string, id: string) => Promise<void>
+  restoreTrack: (uid: string, id: string) => Promise<void>
   deleteTrack: (uid: string, id: string) => Promise<void>
   reassignAndDeleteTrack: (
     uid: string,
@@ -53,6 +57,7 @@ export interface AppContext {
   updateAccount: (uid: string, id: string, patch: Partial<Account>) => Promise<void>
   setPrimaryAccount: (uid: string, id: string) => Promise<void>
   archiveAccount: (uid: string, id: string) => Promise<void>
+  restoreAccount: (uid: string, id: string) => Promise<void>
   deleteAccount: (uid: string, id: string) => Promise<void>
 }
 
@@ -73,9 +78,11 @@ export default function App() {
 
   const {
     active: tracks,
+    archived: archivedTracks,
     createTrack,
     updateTrack,
     archiveTrack,
+    restoreTrack,
     deleteTrack,
     reassignAndDeleteTrack,
   } = useTracks(uid)
@@ -102,10 +109,12 @@ export default function App() {
 
   const {
     active: accounts,
+    archived: archivedAccounts,
     createAccount,
     updateAccount,
     setPrimary: setPrimaryAccount,
     archiveAccount,
+    restoreAccount,
     deleteAccount,
   } = useAccounts(uid, {
     anchorMinor: balanceAnchorMinor,
@@ -180,17 +189,20 @@ export default function App() {
   const context: AppContext = {
     uid,
     tracks,
+    archivedTracks,
     transactions,
     result,
     balance,
     categories,
     accounts,
+    archivedAccounts,
     accountsSummary,
     theme: theme.resolved,
     today,
     createTrack,
     updateTrack,
     archiveTrack,
+    restoreTrack,
     deleteTrack,
     reassignAndDeleteTrack,
     createTransaction,
@@ -208,6 +220,7 @@ export default function App() {
     updateAccount,
     setPrimaryAccount,
     archiveAccount,
+    restoreAccount,
     deleteAccount,
   }
 

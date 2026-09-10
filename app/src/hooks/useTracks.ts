@@ -106,15 +106,29 @@ export function useTracks(uid: string | undefined) {
     await updateDoc(doc(db, userPath(uid, 'tracks'), id), { archived: true })
   }
 
+  /*
+  Archiving promised recoverability the app could not deliver. The form says
+  archiving "keeps the history and hides the track", which a person reasonably
+  reads as reversible - but nothing exposed the archived set and nothing could
+  clear the flag, so an archived track was gone for good. Categories already
+  worked this way; tracks did not.
+  */
+  async function restoreTrack(uid: string, id: string) {
+    await updateDoc(doc(db, userPath(uid, 'tracks'), id), { archived: false })
+  }
+
   const active = tracks.filter((t) => !t.archived)
+  const archived = tracks.filter((t) => t.archived)
 
   return {
     tracks,
     active,
+    archived,
     loading,
     createTrack,
     updateTrack,
     archiveTrack,
+    restoreTrack,
     deleteTrack,
     reassignAndDeleteTrack,
   }

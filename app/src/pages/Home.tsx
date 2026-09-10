@@ -9,8 +9,8 @@ import { TrackForm } from '../components/TrackForm'
 import { TrackList } from '../components/TrackList'
 import { seedDemoData } from '../dev/seed'
 import { formatINR } from '../lib/money'
-import type { Track } from '../lib/types'
-import { card, primaryButton, secondaryButton, sectionTitle } from '../lib/ui'
+import { TRACK_TYPE_LABELS, type Track } from '../lib/types'
+import { card, linkButton, primaryButton, secondaryButton, sectionTitle } from '../lib/ui'
 
 /*
 Home answers "where do I stand?" - income, what's already committed, and how the
@@ -20,22 +20,26 @@ export function Home() {
   const {
     uid,
     tracks,
+    archivedTracks,
     transactions,
     result,
     today,
     createTrack,
     updateTrack,
     archiveTrack,
+    restoreTrack,
     deleteTrack,
     reassignAndDeleteTrack,
     setIncome,
     paydayDay,
     setPayday,
     accountsSummary,
+    archivedAccounts,
     createAccount,
     updateAccount,
     setPrimaryAccount,
     archiveAccount,
+    restoreAccount,
     deleteAccount,
     categories,
     createCategory,
@@ -68,6 +72,7 @@ export function Home() {
 
 
   const [seeding, setSeeding] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Track | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -125,11 +130,13 @@ export function Home() {
 
       <AccountsPanel
         summary={accountsSummary}
+        archived={archivedAccounts}
         usageByAccount={usageByAccount}
         onCreate={(account) => createAccount(uid, account)}
         onUpdate={(id, patch) => updateAccount(uid, id, patch)}
         onSetPrimary={(id) => setPrimaryAccount(uid, id)}
         onArchive={(id) => archiveAccount(uid, id)}
+        onRestore={(id) => restoreAccount(uid, id)}
         onDelete={(id) => deleteAccount(uid, id)}
       />
 
@@ -239,6 +246,50 @@ export function Home() {
           onRestore={(id) => restoreCategory(uid, id)}
         />
       </section>
+
+      {/*
+      Archived tracks were unreachable: nothing listed them and nothing could
+      clear the flag, so "archive" was a one-way door despite the form saying
+      the history was kept. Categories already worked this way.
+      */}
+      {archivedTracks.length > 0 && (
+        <section>
+          <button
+            type="button"
+            className={linkButton}
+            onClick={() => setShowArchived((v) => !v)}
+          >
+            {showArchived ? 'Hide' : 'Show'} archived tracks ({archivedTracks.length})
+          </button>
+
+          {showArchived && (
+            <ul className="m-0 mt-3 grid list-none gap-2 p-0">
+              {archivedTracks.map((t) => {
+                const used = transactions.filter((x) => x.trackId === t.id && !x.deletedAt).length
+                return (
+                  <li
+                    key={t.id}
+                    className="flex flex-wrap items-center gap-3 rounded-field border border-line bg-surface px-4 py-2.5"
+                  >
+                    <span className="font-bold text-ink-soft">{t.name}</span>
+                    <span className="text-sm text-muted">
+                      {TRACK_TYPE_LABELS[t.type].toLowerCase()} &middot; {used} entr
+                      {used === 1 ? 'y' : 'ies'}
+                    </span>
+                    <button
+                      type="button"
+                      className={`${linkButton} ml-auto`}
+                      onClick={() => restoreTrack(uid, t.id)}
+                    >
+                      Restore
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section ref={formRef}>
         <h2 className={sectionTitle}>{editing ? 'Edit track' : 'Add a track'}</h2>

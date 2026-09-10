@@ -98,7 +98,13 @@ export function useAccounts(
     await deleteDoc(doc(db, userPath(uid, 'accounts'), id))
   }
 
+  /** Same gap as tracks: archiving was one-way with no way back. */
+  async function restoreAccount(uid: string, id: string) {
+    await updateDoc(doc(db, userPath(uid, 'accounts'), id), { archived: false })
+  }
+
   const active = accounts.filter((a) => !a.archived)
+  const archived = accounts.filter((a) => a.archived)
 
   return {
     accounts,
@@ -107,7 +113,9 @@ export function useAccounts(
     createAccount,
     updateAccount,
     setPrimary,
+    archived,
     archiveAccount,
+    restoreAccount,
     deleteAccount,
   }
 }
