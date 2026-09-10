@@ -28,3 +28,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Project documentation and submission material - kept locally, never pushed.
+# The README is the only document the repository carries.
+docs/
+SETUP.md

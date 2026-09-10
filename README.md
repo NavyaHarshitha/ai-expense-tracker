@@ -1,297 +1,285 @@
 # Safe to Spend
 
-An expense tracker you talk to.
+**An expense tracker you talk to.** Say what you spent; it tells you what is genuinely left
+to spend today, after the rent, EMIs and SIPs that have not gone out yet.
 
 **Live:** https://ai-expense-tracker-navya.web.app
-**API:** https://expense-api-175631461008.asia-south1.run.app
-
-Built for the Patchamomma 2026 Build Phase. Not a demo of an idea — a working
-app, used daily, for a real problem: a hand-built Google Sheet that stopped
-being sustainable alongside a full-time job.
 
 ---
 
-## The one idea
+## What this is
 
-Most expense apps answer *"what did I spend?"* — a rear-view mirror. This one
-answers **"what can I safely spend today?"**, which is a question you can act on
-before lunch.
+Most expense trackers answer *"what did you spend?"* — a question about the past. The one
+people actually have, standing at a counter, is *"can I afford this?"* A bank balance does
+not answer it, because it does not know which part of itself is already promised to rent,
+EMIs and investments that have not left the account yet.
 
-```
-  what your accounts actually hold
-− what you owe on cards
-− commitments that have not gone out yet     (rent, EMIs, SIPs)
-− savings you have not moved yet
-────────────────────────────────────────
-= safe to spend this month
-÷ days remaining                             = today's allowance
-```
+This app answers it. It subtracts what is committed but unpaid, what is being saved but not
+yet moved, and anything already set aside for a goal, then divides the rest across the days
+left in the month. The result is one figure — **safe to spend today** — shown with its full
+working underneath.
 
-Leftover rolls forward on its own. Spend nothing today and tomorrow's allowance
-rises, because what remains divides across one fewer day. There is no rollover
-ledger to keep in sync — it is a consequence of the arithmetic, not a feature
-bolted on beside it.
+Recording expenses is the other half of the problem. A form asks for five fields at the
+moment you have least attention to spare, which is why forms get abandoned. Here you speak
+one sentence instead.
 
-The figure is shown **with its full working**, because a number you cannot check
-is a number you will not trust.
+### What it does
 
-### Two ideas that carry the data model
-
-**Category and track are different axes.** Category is *what* you bought
-(descriptive, for analysis). Track is *which bucket it came out of*
-(intentional, for budgeting). Dinner on a trip is category `Food`, track
-`Goa Trip` — so it never pollutes the monthly food budget.
-
-**Only one movement type is spending.** Every entry is an `expense`, `income`,
-`transfer` or `refund`. Logging a savings contribution as an expense would make
-money you still hold look gone.
-
-### Bills that land before payday
-
-Salary on the 5th, rent on the 1st. That rent cannot be paid by that month's
-salary — it comes out of the previous month's money. So a commitment whose
-`dueDay` falls before `paydayDay` always reserves exactly one instance: never
-zero (the next one is always looming), never two (only one is ever next).
-
-Without it the money frees up the moment rent clears, gets spent, and the 1st
-arrives short.
-
----
-
-## What it does
-
-| | |
-|---|---|
-| **Talk to it** | "Spent 250 on lunch and 1200 on groceries" → two confirmed rows. Speech → structured actions via Gemini function calling. |
-| **Voice that acts** | Not just capture. Create a track, rename a category, correct yesterday's amount, set your balance — all spoken. |
-| **Photograph a receipt** | Camera → Gemini vision → merchant and total as one expense, itemisation kept in the note. |
-| **Four track types** | Spending (monthly limit), commitment (fixed, dated), goal (target), project (accumulate → spend down → close). |
-| **Multiple accounts** | Bank, cash, wallet, credit card. Cards invert: spending raises the debt, paying lowers it. |
-| **Search at scale** | Category, track, movement and free text, single-pass over a prebuilt index. |
-| **Written insights** | A Gemini narrative over figures the app computed — the model is never asked to do arithmetic. |
-| **Dark mode** | Three-state: system, forced light, forced dark. No flash of the wrong theme on load. |
-| **Works offline** | Firestore persistence — entry happens in car parks with one bar of signal. |
+- **Voice is the primary input.** Gemini function calling turns a sentence into *actions*,
+  not text — so talking to the app changes it: log an expense, create a budget, rename a
+  category, correct yesterday's entry, or mark a recurring bill paid at its stored amount.
+  Several expenses in one sentence become several separate entries.
+- **Receipt capture.** Photograph a bill; it reads the merchant and total and keeps the
+  itemisation with the entry.
+- **Four budget types.** Spending allowances that reset monthly, fixed commitments on a known
+  day, savings goals, and date-bounded projects that accumulate, spend down, then close.
+- **Multiple accounts,** including credit cards — whose balance is debt, so spending raises
+  it and paying lowers it.
+- **Dashboard.** Spending by category, a daily trend, month-on-month comparison, and a
+  written monthly review generated from figures the app already computed.
+- **Works offline** and installs to a phone home screen.
 
 ---
 
 ## Architecture
 
 ```
-Browser (React 19 + TS + Tailwind v4, Firebase Hosting)
-  │
-  ├── Firestore (asia-south1) ─── all CRUD, direct, offline-persistent
-  │      security rules are the ONLY authorization layer
-  │
-  └── Cloud Run: expense-api (FastAPI, asia-south1)
-         │  every request carries a Firebase ID token
-         └── Vertex AI · gemini-3.6-flash
+   Browser  (React 19 · TypeScript · Tailwind v4 · Vite)
+      │        all financial arithmetic runs here, as pure functions
+      │
+      ├──────────────►  Cloud Firestore  (asia-south1)
+      │   read + write   security rules are the ONLY authorization layer
+      │   onSnapshot     offline-persistent
+      │
+      └──────────────►  Cloud Run: expense-api  (FastAPI)
+          POST /plan     1. verify Firebase ID token      → 401
+               /parse    2. rate limit per user           → 429
+               /insights 3. assemble prompt (user text fenced as data)
+                         4. filter response to a tool allowlist
+                                │
+                                └──►  Vertex AI · gemini-3.6-flash
 ```
 
-**The backend holds no write credentials.** `/parse` and `/plan` return
-*candidates* and *intended actions*. The client confirms them and writes through
-its own existing Firestore path. So there is exactly one way into the ledger,
-and the security rules govern it. A backend that could write directly would be a
-second, unaudited door.
+**The load-bearing decision: the AI service holds no write credentials.** `/plan` and
+`/parse` return *intended actions*. The client displays them, the user confirms, and the
+client performs the write through its own path. So there is exactly one route into the
+ledger, and the Firestore security rules govern all of it.
 
-### Why Vertex AI and not the Gemini Developer API
+Two more worth knowing:
 
-The Developer API's free tier does not work on a billing-enabled project — it
-returns `429 prepayment credits are depleted`. Vertex authenticates as the Cloud
-Run service account, so **there is no API key to leak**, and the challenge
-credits apply. Documented in [SETUP.md](SETUP.md).
-
----
-
-## Correctness
-
-**Money is an integer count of paise. Everywhere.** ₹250.10 is `25010`, never
-`250.1`. Floating-point rupees accumulate error across thousands of rows and
-every aggregate inherits it. Conversion to a decimal happens at exactly two
-edges: parsing input, and formatting for display.
-
-**Amounts are bounded.** `MAX_AMOUNT_MINOR` is ₹10 crore. Not an opinion about
-anyone's wealth — a precision guard. `999999999999999` typed into an amount box
-became 99,999,999,999,999,900 paise, past `Number.MAX_SAFE_INTEGER`, where
-addition quietly stops being exact. The ceiling leaves room to sum ~900,000
-maximum-value rows and stay in exact-integer territory.
-
-**Nothing enters the app un-checked.** Firestore is schemaless, so every hook
-used to do `{ ...d.data() } as Transaction` — a cast, which is a promise to the
-compiler that nothing verifies. [`lib/sanitize.ts`](app/src/lib/sanitize.ts) is
-now the trust boundary: every row is coerced to a well-formed shape, and one too
-broken to repair is dropped rather than propagated. A single `undefined`
-`amountMinor` used to make one row's total `NaN`, and `NaN` propagates through
-every sum it touches until the hero figure reads `₹NaN`.
-
-**Soft deletes only.** Financial records are corrected by appending, never
-destroyed. Hard delete is refused *by the security rules*, not merely avoided by
-the client.
+- **All arithmetic runs client-side**, as pure functions with no framework or network
+  dependency. That is what makes the financial core directly unit-testable, and keeps figures
+  correct offline.
+- **Money is an integer count of paise, everywhere.** Never a float, and bounded at ₹10
+  crore — past 2⁵³ addition silently stops being exact.
 
 ---
 
-## Security
+## Getting started
 
-| Layer | What it does |
-|---|---|
-| Firestore rules | Every document lives under `users/{uid}/`, so isolation is structural. **Verified against the emulator** — see [`test/rules/`](test/rules/). |
-| Shape validation | Rules reject negative, non-numeric, absent and over-ceiling amounts, malformed dates and unknown movement types — on create *and* update. |
-| API auth | Cloud Run is `--allow-unauthenticated` because the browser calls it directly; every request must carry a Firebase ID token, verified with `firebase-admin`. |
-| Rate limiting | A valid token is not a licence to spend the project's credits. Per-uid token bucket: 20 burst, 10/min sustained. |
-| Prompt injection | User-authored names and descriptions are fenced, labelled as data, and flattened — newlines and fence markers stripped — so a track named *"ignore all previous instructions"* reads as a track name. |
-| Tool allowlist | The planner's output is filtered against a fixed set before it reaches the client. |
-| Confirmation | Structural changes always require an explicit Apply. Expenses are graded: under ₹500 commits with an Undo, above requires the tap. |
-| Headers | `frame-ancestors 'none'` + `X-Frame-Options: DENY` (clickjacking a money app is not theoretical), `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` that grants microphone and camera to this origin only and switches the rest off. HSTS is on by default. |
+### Prerequisites
 
-A full `script-src`/`connect-src` CSP is deliberately *not* deployed. It is the
-right next step, but it cannot be verified without driving a real Google
-sign-in through a browser, and shipping an unverified CSP on submission day
-risks breaking authentication outright. `frame-ancestors` gives the clickjacking
-protection with no such risk.
+- Node.js 20+
+- Python 3.11+ (only to run the AI service locally)
+- A Firebase project with **Authentication** (Google provider) and **Cloud Firestore** enabled
+- Java 11+ (only for the security-rules tests, which use the Firestore emulator)
 
-The Firebase web config in the client is **not** a secret — it is designed to
-ship to browsers, and per-user isolation is enforced by rules, not by hiding it.
-The Vertex credentials are a different matter entirely and never leave the
-server.
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/NavyaHarshitha/ai-expense-tracker.git
+cd ai-expense-tracker/app
+npm install
+cp .env.local.example .env.local
+```
+
+Fill `.env.local` with your own Firebase web config:
+
+```bash
+npx firebase-tools apps:sdkconfig WEB --project YOUR_PROJECT_ID
+```
+
+These values are **not secrets** — a Firebase web config is designed to ship to the browser.
+Per-user isolation comes from the security rules, not from hiding the config.
+
+### 2. Run it
+
+```bash
+npm run dev        # http://localhost:5173
+```
+
+Sign in with Google. The app works immediately against Firestore; voice and receipts
+additionally need the AI service (step 4).
+
+### 3. Deploy the security rules
+
+**Do this before using it with real data.** The rules are the entire authorization layer.
+
+```bash
+cd ..
+npx firebase-tools deploy --only firestore:rules --project YOUR_PROJECT_ID
+```
+
+### 4. The AI service (optional for local development)
+
+Voice, receipts and the monthly review call a small FastAPI service. Without it, the manual
+form still works fully.
+
+```bash
+cd api
+pip install -r requirements.txt
+export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+gcloud auth application-default login      # first time only
+uvicorn main:app --reload --port 8080
+```
+
+Then point the client at it, in `app/.env.local`:
+
+```
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+To deploy it:
+
+```bash
+gcloud run deploy expense-api --source api --region asia-south1 \
+  --allow-unauthenticated --min-instances=0 --max-instances=10 \
+  --concurrency=40 --cpu=1 --memory=512Mi
+```
+
+Grant the Cloud Run runtime service account `roles/aiplatform.user` so it can reach Vertex
+AI. The service is `--allow-unauthenticated` because the browser calls it directly, but every
+request must carry a valid Firebase ID token — that check is the only thing between the
+internet and a metered model, so it runs before anything else.
+
+> **Vertex AI, not the Gemini Developer API.** The Developer API's free tier does not work on
+> a billing-enabled project (`429 prepayment credits are depleted`). Vertex authenticates as
+> the Cloud Run service account, which means **no API key exists that could be leaked**.
+
+---
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run check` | Type check + all unit tests |
+| `npm run build` | Production build |
+| `npm run lint` | Lint |
+| `npm run typecheck` | Type check only |
+
+Security-rules tests run against the real Firestore emulator and need Java:
+
+```bash
+cd test/rules
+npm install @firebase/rules-unit-testing firebase
+npx firebase emulators:exec --only firestore --project rules-test \
+  "node firestore.rules.test.mjs"
+```
+
+---
+
+## Project layout
+
+```
+app/                  React client — the whole UI and all financial arithmetic
+  src/lib/            pure functions: safeToSpend, accounts, insights,
+                      money, sanitize, filterTransactions, planActions
+  src/hooks/          Firestore subscriptions and capture hooks
+  src/components/     UI
+  src/pages/          Home · Add Expense · Dashboard
+api/                  FastAPI service on Cloud Run
+  main.py             routes, size caps, tool allowlist
+  gemini.py           Vertex AI client, prompts, tool declarations
+  auth.py             Firebase ID token verification
+  limits.py           per-user rate limiting
+test/rules/           Firestore security-rules tests (emulator)
+firestore.rules       the entire authorization layer
+firebase.json         hosting config and security headers
+```
+
+`app/src/lib/` is where the interesting code is. Every file there is a pure function with
+tests beside it.
+
+> The `index.html`, `add-expense.html`, `dashboard.html`, `styles.css` and `js/` at the
+> repository root are the original vanilla-JS prototype, kept for history. The application
+> lives entirely in `app/`.
+
+---
+
+## Testing
+
+```
+223 unit tests      app/src/**/*.test.ts
+ 32 rules tests     test/rules/ — against the Firestore emulator
+```
+
+The unit suite includes a deliberately adversarial group: malformed and missing dates,
+non-numeric and out-of-range amounts, empty ledgers, month boundaries, leap years, and days
+where refunds exceed spending. Those are the cases where a wrong answer still *renders*
+plausibly, so nobody notices it.
+
+The rules tests cover cross-user access, unauthenticated access, every validation branch, and
+the append-only guarantee. Security properties asserted by reading are properties nobody has
+actually checked.
 
 ---
 
 ## Measured
 
-Every number below is reproducible, not estimated.
-
-### Bundle (`npm run build`)
-
-| Chunk | Raw | Gzip | When |
-|---|---|---|---|
-| `firebase` | 613 kB | 180 kB | initial |
-| `react` | 283 kB | 90 kB | initial |
-| `index` | 68 kB | 19 kB | initial |
-| CSS | 26 kB | 6 kB | initial |
-| **Initial total** | **991 kB** | **295 kB** | |
-| `Dashboard` (Recharts) | 381 kB | 110 kB | lazy, on route |
-| `AddExpense` | 40 kB | 12 kB | lazy, on route |
-
-Down from a 1.29 MB single bundle. Charts are the single largest dependency and
-are not downloaded by someone who only wants to log a lunch.
-
-### Core arithmetic, at scale
-
-Median of 5 runs, Node 20. Seeded ledgers of realistic shape.
-
-| Operation | 1,000 rows | 10,000 rows | 50,000 rows |
-|---|---|---|---|
-| `computeSafeToSpend` | 1.4 ms | 10.0 ms | 40.9 ms |
-| `buildInsights` | 1.4 ms | 8.5 ms | 52.4 ms |
-| `categoryBreakdown` | 0.3 ms | 2.1 ms | 12.3 ms |
-| `indexTransactions` (once per change) | 0.2 ms | 1.4 ms | 11.8 ms |
-| **Search: text query** | **0.06 ms** | **0.44 ms** | **1.8 ms** |
-| **Search: category facet** | **0.02 ms** | **0.22 ms** | **0.52 ms** |
-| Sanitise whole snapshot | 2.0 ms | 13.1 ms | 75.6 ms |
-
-Search is the number that mattered: it runs per keystroke (debounced 200 ms) and
-stays far inside a 16.7 ms frame even at 50,000 rows — an index built once per
-data change, then a single pass with the cheapest test first.
-
-Commitment and savings maths is **flat in the number of tracks** (2.2 ms at 40
-tracks × 10,000 rows, versus 2.6 ms at 3 tracks). It previously re-filtered the
-whole ledger inside a per-track loop, which multiplied the cost by every
-commitment a user added.
-
-### API (Cloud Run, asia-south1)
-
-200 requests, 20 concurrent, against `/health` from a residential connection in
-India. `--min-instances=0 --max-instances=10 --concurrency=40 --cpu=1 --memory=512Mi`.
-
 | | |
-|---|---|
-| Throughput | 161 req/s |
-| p50 | 99 ms |
-| p95 | 130 ms |
-| p99 | 343 ms |
-| Errors | 0 / 200 |
+| --- | --- |
+| Search across 10,000 transactions | 0.44 ms |
+| Safe-to-Spend recompute, 10,000 transactions | 10 ms |
+| Initial page payload | 991 kB raw / **295 kB gzipped** |
+| API latency | p50 99 ms · p95 130 ms · p99 343 ms |
+| API errors, 200 requests at 20 concurrent | 0 |
 
-`min-instances=0` keeps the idle cost at ₹0; the trade is a cold start, which
-the p99 above includes. Auth is checked *before* the rate limiter and both
-*before* any model call, so an unauthenticated flood costs a 401 and never
-reaches Vertex.
-
-### Tests
-
-```
-213 unit tests   (app/src/**/*.test.ts)
- 32 rules tests  (test/rules/, against the Firestore emulator)
-```
-
-Including a hostile-input suite where every case is a defect that was actually
-found by fuzzing the core, not a hypothetical.
+Search is the one that mattered: it runs on every keystroke, so it has one animation frame
+(16.7 ms) to finish. An index is built once per data change, not once per keystroke.
 
 ---
 
-## Accessibility
+## Notable design decisions
 
-- **Focus is visible.** Was `outline: none` plus a 0.18-alpha glow — invisible
-  on both grounds. Now a 2px outline in the theme's own colour, offset.
-- **Contrast meets AA.** `--color-muted` measured 3.87:1 and carries captions
-  and hints throughout; darkened to 4.51:1 against the worst-case ground.
-  Interactive control borders got their own token at 3:1 (WCAG 1.4.11) while
-  decorative dividers stay quiet.
-- **Skip link** to `#main`, which is focusable.
-- **The hero is a live region** — it changes without navigation (a save, a push
-  from another device, midnight rolling over), and announces as *"Safe to spend
-  today, ₹410"* rather than a bare number.
-- Every form control is labelled; pinch-zoom is never blocked.
+**Category and track are independent axes.** A category is *what you bought* (for analysis);
+a track is *which pot it came out of* (for budgeting). Keeping them separate means a dinner
+on holiday is category `Food`, track `Goa Trip` — and never distorts the monthly food budget.
 
-## Resilience
+**Only one of four movement types is spending.** `expense` reduces money; `income`,
+`transfer` and `refund` do not. That is what lets goals and daily spending share one ledger:
+a savings contribution never looks like money you have lost.
 
-- **Error boundary.** A render throw used to unmount the tree into a blank white
-  page — the worst failure mode for something holding your money, and the most
-  likely moment for it is a live demo. Now it says what happened, confirms the
-  data is safe, and offers reload or home.
-- **404 route.** Hosting rewrites every path to `index.html` so deep links work,
-  which meant a mistyped URL reached React Router's developer error page.
-- **PWA.** Installable, maskable icons, offline-capable, safe-area aware.
+**Bills due before payday are held a cycle early.** If salary lands on the 5th and rent is
+due on the 1st, that rent cannot come from that month's salary. The app reserves exactly one
+instance at all times — never zero, never two — so the 1st never arrives short.
+
+**Nothing enters the app unchecked.** Firestore is schemaless, so every document passes
+through a validation layer (`app/src/lib/sanitize.ts`) rather than a type cast. Strict about
+amounts and dates, where there is no safe default; lenient about descriptive fields, where
+losing one costs nothing.
+
+**Soft deletes only.** Records are corrected by appending. Hard delete is refused *by the
+security rules*, not merely avoided by the client.
 
 ---
 
-## Run it
+## Known limitations
 
-```bash
-# Frontend
-cd app
-npm install
-cp .env.local.example .env.local     # fill in your Firebase web config
-npm run dev
+- Voice does not route to a named account — "spent 500 from HDFC" logs the expense but not
+  the account.
+- No UI for transfers between your own accounts; record them as two entries.
+- Automatic ingestion of bank-alert emails is designed but not built.
+- Rate limiting is per Cloud Run instance rather than shared, so the effective ceiling scales
+  with instance count.
+- A full `script-src` Content Security Policy is not deployed — only `frame-ancestors`.
 
-npm run check                        # typecheck + 213 tests
-npm run build
-
-# API
-cd api
-pip install -r requirements.txt
-uvicorn main:app --reload            # needs GOOGLE_CLOUD_PROJECT + ADC
-```
-
-Full cloud setup — project, billing, Firestore region, Vertex access, the
-gotchas — is in **[SETUP.md](SETUP.md)**, written as a runbook to be followed
-from scratch.
+---
 
 ## Stack
 
-React 19 · TypeScript (strict) · Vite 8 (rolldown) · Tailwind CSS v4 · Recharts
-· Firebase Auth / Firestore / Hosting · FastAPI on Cloud Run · Vertex AI
-`gemini-3.6-flash` · Vitest
+React 19 · TypeScript (strict) · Vite 8 · Tailwind CSS v4 · Recharts · Vitest
+· Firebase Authentication · Cloud Firestore · Firebase Hosting
+· FastAPI · Cloud Run · Vertex AI (Gemini 3.6 Flash)
 
-## Honestly not done
-
-- **Gmail bank-alert ingestion.** Designed in the spec, never built — it needs
-  an Apps Script the user authorizes against their own inbox, plus a dedupe and
-  review-queue pipeline.
-- **Voice does not know about accounts.** "Spent 500 from HDFC" logs the expense
-  but will not route it to that account.
-- **No account-to-account transfer UI.**
-- Rate limiting is per Cloud Run instance, not shared state. With N instances
-  the effective ceiling is N × the limit. Redis or Firestore would make it
-  exact; that is the upgrade path, not a pretence that it is already exact.
-
-I would rather ship one thing working end to end and say plainly what is
-missing than four things half-built.
+Built for the Google Patchamomma 2026 Build Phase.
