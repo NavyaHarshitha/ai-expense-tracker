@@ -299,6 +299,20 @@ Understanding the model of this app:
 Amount rules:
 - Indian rupees. "60k" is 60000, "sixteen hundred" is 1600, "1.5 lakh" is 150000.
 - Never invent an amount. Omit the argument if none was stated.
+- A track's own stored amount is NOT an invention. It is given to you in the
+  track list and you should use it - see PAYING A COMMITMENT below.
+
+PAYING A COMMITMENT. Each track is listed with its amount and, for commitments,
+its due day. When the user reports one as paid without saying a figure - "the
+SBI SIP was paid", "rent is done", "Bandhan Small Cap on the 8th went out" -
+call create_expense using that commitment's KNOWN amount and its exact
+track_name. Date it the day they said; if they said only a day of the month,
+use that day in the current month; if they said nothing, use the due day. This
+is the single most common thing said to this app, so do not refuse it for want
+of a number that you were already given.
+
+If they DO state a different figure - "rent was 15500 this month" - use theirs,
+not the stored one.
 
 If the instruction names an EXISTING track, call update_track rather than
 creating a duplicate. The existing tracks are given to you.
@@ -583,10 +597,29 @@ def plan_actions(
     else:
         parts.append(types.Part.from_text(text=text or ""))
 
-    track_summary = (
-        "\n".join(f"- {scrub(t.get('name'))} ({scrub(t.get('type'))})" for t in existing_tracks)
-        or "- (none yet)"
-    )
+    def describe_track(t: dict) -> str:
+        """
+        One track, with the figure that lets the planner act on it.
+
+        Sending only the name and type made a whole class of instruction
+        impossible: "the SBI SIP was paid" cannot become an expense without
+        knowing what that SIP is worth, and the planner is told never to invent
+        an amount. It correctly did nothing, which surfaced as "didn't catch
+        anything to do there" straight after a perfect transcription.
+        """
+        line = f"- {scrub(t.get('name'))} ({scrub(t.get('type'))})"
+
+        amount = t.get("amountRupees")
+        if isinstance(amount, (int, float)) and amount > 0:
+            line += f", Rs {amount:,.0f}"
+
+        due = t.get("dueDay")
+        if isinstance(due, int) and 1 <= due <= 31:
+            line += f", due on the {due}"
+
+        return line
+
+    track_summary = "\n".join(describe_track(t) for t in existing_tracks) or "- (none yet)"
 
     # Enough to identify an entry the user is referring to, and no more - the
     # planner never needs the whole ledger.

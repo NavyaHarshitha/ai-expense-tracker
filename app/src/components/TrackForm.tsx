@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { toPaise } from '../lib/money'
+import { definingAmountMinor as amountOf } from '../lib/tracks'
 import { TRACK_TYPE_LABELS, type Track, type TrackType } from '../lib/types'
 import { cardPadded, field, fieldLabel, linkButton, primaryButton, secondaryButton } from '../lib/ui'
 
@@ -14,19 +15,6 @@ const HINTS: Record<TrackType, string> = {
   project: 'Date-bounded: saves, then spends down, then closes. A trip.',
 }
 
-/** Pull the one amount that matters for a track's type back out for editing. */
-function amountOf(track: Track): number {
-  switch (track.type) {
-    case 'spending':
-      return track.monthlyLimitMinor ?? 0
-    case 'commitment':
-      return track.commitmentAmountMinor ?? 0
-    case 'goal':
-      return track.targetMinor ?? 0
-    case 'project':
-      return track.budgetMinor ?? 0
-  }
-}
 
 export function TrackForm({
   editing,

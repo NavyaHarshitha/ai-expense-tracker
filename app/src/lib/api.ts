@@ -117,7 +117,22 @@ export async function planActions(input: {
   /** A photographed receipt, already downscaled by the client. */
   imageBase64?: string
   mimeType?: string
-  existingTracks: Array<{ name: string; type: string }>
+  /*
+  Names alone were not enough.
+
+  "The SBI SIP was paid" is unanswerable without knowing what that SIP is worth,
+  and the planner is instructed never to invent an amount - so it correctly did
+  nothing, and the user saw "didn't catch anything to do there" after being
+  transcribed perfectly. The stored amount is not an invention, so it is sent.
+  */
+  existingTracks: Array<{
+    name: string
+    type: string
+    /** The track's defining amount, in rupees. */
+    amountRupees?: number
+    /** Commitments only: the day of the month it falls due. */
+    dueDay?: number
+  }>
   categories: string[]
   /** Enough to identify a row the user refers to - never the whole ledger. */
   recentTransactions?: Array<{

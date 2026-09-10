@@ -11,6 +11,7 @@ import { useVoiceCapture } from '../hooks/useVoiceCapture'
 import { type ParsedCandidate, planActions } from '../lib/api'
 import { defaultAccountId } from '../lib/accounts'
 import { toAmountMinor, toPaise } from '../lib/money'
+import { definingAmountMinor } from '../lib/tracks'
 import { isStructural, normaliseAll, type NormalisedAction } from '../lib/planActions'
 import {
   MOVEMENT_LABELS,
@@ -232,7 +233,14 @@ export function QuickAdd({
 
       const result = await planActions({
         ...input,
-        existingTracks: tracks.map((t) => ({ name: t.name, type: t.type })),
+        existingTracks: tracks.map((t) => ({
+          name: t.name,
+          type: t.type,
+          ...(definingAmountMinor(t) > 0
+            ? { amountRupees: definingAmountMinor(t) / 100 }
+            : {}),
+          ...(t.dueDay !== undefined ? { dueDay: t.dueDay } : {}),
+        })),
         categories,
         // Only what is needed to point at a row - never the whole ledger.
         recentTransactions: recent.slice(0, 40).map((t) => ({
@@ -264,9 +272,20 @@ export function QuickAdd({
       })
 
       if (actions.length === 0) {
+        /*
+        Two different failures were sharing one message.
+
+        "Didn't catch anything" is right when nothing was heard, and actively
+        misleading when the transcript above it shows the words repeated back
+        correctly - the user then reasonably concludes the app is broken rather
+        than that the sentence was understood but not actionable. Say which
+        happened.
+        */
         setParseError(
           result.reply ||
-            "Didn't catch anything to do there. Try \u201cspent 250 on lunch\u201d, or \u201crent is 18000 due on the 5th\u201d.",
+            (result.transcript
+              ? `Heard you, but couldn\u2019t turn that into a change. Try naming an amount \u2014 e.g. \u201cpaid 6000 for SBI Mutual Fund\u201d.`
+              : "Didn't catch anything to do there. Try \u201cspent 250 on lunch\u201d, or \u201crent is 18000 due on the 5th\u201d."),
         )
         return
       }
