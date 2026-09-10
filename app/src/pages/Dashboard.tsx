@@ -269,17 +269,32 @@ export function Dashboard() {
             </div>
 
             {written.loading && !written.insight && (
-              <p className="m-0 text-muted">Reading your month…</p>
+              <p className="m-0 text-muted">Reading your month… this takes a few seconds.</p>
             )}
 
-            {written.error && !written.insight && (
-              <p className="m-0 text-sm text-danger">{written.error}</p>
+            {/*
+            Shown whenever there is one.
+
+            This was gated on there being no insight yet, so a refresh that
+            failed over an existing review reported nothing at all - the button
+            simply went back to "Refresh" and the old text stayed. Indis-
+            tinguishable from the app having hung, which is what it was taken
+            for.
+            */}
+            {written.error && (
+              <p className="m-0 mb-2 text-sm text-danger">{written.error}</p>
             )}
 
             {written.insight && (
               <>
-                <p className="m-0 text-xl font-bold text-ink">{written.insight.headline}</p>
-                <p className="mt-2 mb-0 text-ink-soft">{written.insight.body}</p>
+                <div
+                  className={
+                    written.loading ? 'opacity-50 transition-opacity' : 'transition-opacity'
+                  }
+                >
+                  <p className="m-0 text-xl font-bold text-ink">{written.insight.headline}</p>
+                  <p className="mt-2 mb-0 text-ink-soft">{written.insight.body}</p>
+                </div>
 
                 {written.insight.actions.length > 0 && (
                   <ul className="m-0 mt-4 grid list-none gap-2 p-0">

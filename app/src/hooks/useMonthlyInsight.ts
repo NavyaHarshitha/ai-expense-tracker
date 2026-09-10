@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 
 import { fetchInsight, type MonthlyInsight } from '../lib/api'
@@ -42,6 +42,8 @@ export function useMonthlyInsight(args: {
   const [insight, setInsight] = useState<CachedInsight | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Month key we have already auto-generated for, so it happens at most once. */
+  const autoTried = useRef<string | null>(null)
 
   const key = monthKey(today)
 
@@ -103,7 +105,22 @@ export function useMonthlyInsight(args: {
         spentRupees: result.spentMinor / 100,
       }
 
-      await setDoc(doc(db, userPath(uid, 'insights'), key), payload)
+      /*
+      Not awaited, deliberately.
+
+      Firestore's setDoc resolves when the write reaches the SERVER, not when
+      it lands in the local cache. With offline persistence on, a flaky
+      connection leaves that promise pending indefinitely - so awaiting it
+      meant the finally below never ran and the button read "Writing…" for
+      ever, even though the narrative itself had already arrived through
+      onSnapshot from the local cache.
+
+      The local write applies immediately either way. Syncing it is the SDK's
+      job, and a cache entry that fails to persist costs one regeneration.
+      */
+      setDoc(doc(db, userPath(uid, 'insights'), key), payload).catch((e) => {
+        console.warn('Could not cache the monthly review', e)
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not write the review.')
     } finally {
@@ -118,6 +135,17 @@ export function useMonthlyInsight(args: {
   useEffect(() => {
     if (!enabled || !uid || insight || loading) return
     if (result.spentMinor <= 0) return
+    /*
+    One automatic attempt per month, per session.
+
+    `loading` going false and `insight` arriving are two separate state updates,
+    and between them this effect sees "nothing written, not busy" and fires
+    again - a second billed call for a narrative that already exists. The ref
+    closes that window; the Refresh button is how a deliberate regeneration
+    happens.
+    */
+    if (autoTried.current === key) return
+    autoTried.current = key
     generate()
     // generate is intentionally omitted: including it re-fires on every render
     // as `result` changes, which would bill a call per keystroke.

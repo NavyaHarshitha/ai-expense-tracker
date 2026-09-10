@@ -39,20 +39,46 @@ export class ApiError extends Error {
   }
 }
 
+/*
+Model calls take seconds, not milliseconds - a narrative is around 13 - so the
+ceiling has to be generous. But fetch() has no timeout of its own: a dropped
+connection or a stalled request leaves the promise pending for ever, and any
+caller awaiting it is stuck with no error and no way back. That is exactly how
+the Dashboard ended up reading "Writing…" indefinitely.
+*/
+const REQUEST_TIMEOUT_MS = 45_000
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const user = auth.currentUser
   if (!user) throw new ApiError('Not signed in', 401)
 
   const token = await user.getIdToken()
 
-  const response = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  let response: Response
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    // An abort and a genuine network failure both land here.
+    throw new ApiError(
+      controller.signal.aborted
+        ? 'That took too long. Check your connection and try again.'
+        : 'Could not reach the server. Check your connection.',
+      0,
+    )
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!response.ok) {
     // Map the statuses the UI actually needs to say something different about.
