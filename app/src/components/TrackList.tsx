@@ -332,7 +332,12 @@ function TrackRow({
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span
-              className={`truncate font-bold ${settled ? 'text-muted' : 'text-ink'}`}
+              /*
+              ink-soft, not muted, on a settled row. The green tint is now
+              strong enough to carry "done" on its own, and muted text sat at
+              4.48:1 on it - the constraint that kept the tint weak.
+              */
+              className={`truncate font-bold ${settled ? 'text-ink-soft' : 'text-ink'}`}
               title={track.name}
             >
               {track.name}
@@ -353,13 +358,19 @@ function TrackRow({
           {/* The caption is the row's secondary line only where it says something
               the chip and amount do not already say. */}
           {(!isCommitment || settled) && (
-            <span className="mt-0.5 block truncate text-xs text-muted">{caption}</span>
+            <span
+              className={`mt-0.5 block truncate text-xs ${
+                settled ? 'text-ink-soft' : 'text-muted'
+              }`}
+            >
+              {caption}
+            </span>
           )}
         </span>
 
         <span
           className={`tnum shrink-0 whitespace-nowrap text-right text-sm font-bold ${
-            over ? 'text-danger' : settled ? 'text-muted' : 'text-ink'
+            over ? 'text-danger' : settled ? 'text-ink-soft' : 'text-ink'
           }`}
         >
           {isCommitment && !settled ? (
@@ -367,7 +378,12 @@ function TrackRow({
           ) : (
             <>
               {formatINR(used)}
-              {total > 0 && <span className="font-medium text-muted"> / {formatINR(total)}</span>}
+              {total > 0 && (
+                <span className={`font-medium ${settled ? '' : 'text-muted'}`}>
+                  {' / '}
+                  {formatINR(total)}
+                </span>
+              )}
             </>
           )}
         </span>

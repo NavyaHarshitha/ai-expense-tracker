@@ -55,12 +55,20 @@ as utilities instead of hand-written classes.
   is nearly invisible on a dark ground is a solid band across a light one. So
   light and dark get their own values rather than one colour and an alpha.
 
-  Light stays a whisper - the list is long and a strong fill on every settled
-  row turns the section into stripes. Dark goes DEEPER rather than lighter,
-  which is the only direction that makes the tint more present without pushing
-  the muted caption sitting on top of it below the contrast floor.
+  Green is deliberately assertive in both: darker than the page on light,
+  lighter than it on dark. A commitment being settled is the single most useful
+  thing to spot while scanning, so it earns real colour rather than a hint.
+
+  That was only affordable once settled rows stopped using --color-muted for
+  their text. Muted sat at 4.48:1 on the old dark tint and 4.52:1 on the light
+  one - already at the floor - so any stronger green broke legibility. Moving
+  those rows to --color-ink-soft buys roughly two points of headroom, and the
+  colour now carries the "done" signal that the faded text used to.
+
+  The in-progress tint stays quiet. It appears on every partly-spent track, so
+  the same weight there would turn the list into stripes.
   */
-  --color-row-paid: #f7faf5;
+  --color-row-paid: #d8e9d1;
   --color-row-progress: #fef6f8;
   /* A caution that is not an error - near-duplicate names, burn-rate notices. */
   /* 4.32:1 on canvas before, a hair under AA. */
@@ -130,10 +138,10 @@ not for depth - brightens further still.
       --color-danger: #f08a8a;
       --color-danger-soft: #3d2836;
     --color-good-soft: #26382b;
-    --color-row-paid: #102614;
+    --color-row-paid: #33503a;
     --color-row-progress: #241a45;
       --color-good-soft: #26382b;
-      --color-row-paid: #102614;
+      --color-row-paid: #33503a;
       --color-row-progress: #241a45;
       --color-warn: #e0b45c;
       --color-good: #8fd0a0;
