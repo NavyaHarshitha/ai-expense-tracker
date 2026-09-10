@@ -20,8 +20,8 @@ server/data.db
 firebase-debug.log
 firestore-debug.log
 
-# Claude Code personal overrides (not team settings)
-.claude/settings.local.json
+# local editor / tooling config
+.claude/
 
 # python bytecode — build artefacts, and they were being committed
 __pycache__/
