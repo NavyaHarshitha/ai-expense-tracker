@@ -222,6 +222,9 @@ export function toTrack(id: string, raw: Raw): Track | null {
     commitmentAmountMinor: optionalInt(raw.commitmentAmountMinor),
     dueDay: safeDay(raw.dueDay),
     openingBalanceMinor: optionalInt(raw.openingBalanceMinor),
+    ...(typeof raw.openingInAccounts === 'boolean'
+      ? { openingInAccounts: raw.openingInAccounts }
+      : {}),
     targetMinor: optionalInt(raw.targetMinor),
     plannedMonthlyMinor: optionalInt(raw.plannedMonthlyMinor),
     targetDate: safeDate(raw.targetDate),

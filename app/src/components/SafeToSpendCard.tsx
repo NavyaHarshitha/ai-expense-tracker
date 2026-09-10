@@ -158,6 +158,9 @@ export function SafeToSpendCard({
               value={-result.committedRemainingMinor}
             />
             <Row label="Savings still to move" value={-result.savingsRemainingMinor} />
+            {result.setAsideMinor > 0 && (
+              <Row label="Set aside in goals" value={-result.setAsideMinor} />
+            )}
           </>
         ) : (
           <>
@@ -195,6 +198,15 @@ export function SafeToSpendCard({
       Say WHY the money is missing. Held-back cash that just disappears from the
       figure looks like a bug; named, it looks like the protection it is.
       */}
+      {result.setAsideMinor > 0 && (
+        <p className="mt-4 mb-0 rounded-field bg-primary-soft px-4 py-3 text-sm text-ink-soft">
+          <strong className="tnum">{formatINR(result.setAsideMinor)}</strong> is already
+          saved toward your goals and still sitting in your accounts. Your balance is
+          right &mdash; the money is genuinely there &mdash; it is just spoken for, so
+          it is not offered here.
+        </p>
+      )}
+
       {result.preSalaryHeldMinor > 0 && (
         <p className="mt-4 mb-0 rounded-field bg-primary-soft px-4 py-3 text-sm text-ink-soft">
           <strong className="tnum">{formatINR(result.preSalaryHeldMinor)}</strong> of that is held

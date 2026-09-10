@@ -177,9 +177,11 @@ export function Home() {
                 label="Savings still to move"
                 value={formatINR(result.savingsRemainingMinor)}
                 hint={
-                  result.plannedSavingsMinor > result.savingsRemainingMinor
-                    ? `${formatINR(result.plannedSavingsMinor - result.savingsRemainingMinor)} already moved`
-                    : undefined
+                  result.setAsideMinor > 0
+                    ? `${formatINR(result.setAsideMinor)} already set aside`
+                    : result.plannedSavingsMinor > result.savingsRemainingMinor
+                      ? `${formatINR(result.plannedSavingsMinor - result.savingsRemainingMinor)} already moved`
+                      : undefined
                 }
               />
             </>

@@ -36,6 +36,8 @@ export interface SafeToSpendResult {
   savingsRemainingMinor: number
   /** Held for commitments that fall due before the next salary. */
   preSalaryHeldMinor: number
+  /** Already-saved money sitting in the accounts but earmarked for a goal. */
+  setAsideMinor: number
   incomeMinor: number
   committedMinor: number
   plannedSavingsMinor: number
@@ -282,6 +284,27 @@ export function savingsRemainingThisMonthMinor(
   return remaining
 }
 
+/**
+ * Money that is in the accounts but already spoken for.
+ *
+ * A goal can hold money in two places, and the difference decides whether it is
+ * spendable. Savings physically moved out of an account already reduced the
+ * balance, so they need no further treatment. But money the user has earmarked
+ * WITHOUT moving it is still sitting in the bank - the balance shows it because
+ * the bank shows it - and offering it as spendable is how a trip fund quietly
+ * gets eaten.
+ *
+ * Only tracks whose opening balance is explicitly flagged as living in a
+ * tracked account are counted, so a goal representing an outside mutual fund is
+ * untouched: that money was never part of the balance to begin with, and
+ * subtracting it would understate what is genuinely available.
+ */
+export function setAsideInAccountsMinor(tracks: Track[]): number {
+  return activeTracks(tracks)
+    .filter((t) => (t.type === 'goal' || t.type === 'project') && t.openingInAccounts === true)
+    .reduce((sum, t) => sum + Math.max(0, t.openingBalanceMinor ?? 0), 0)
+}
+
 export function computeSafeToSpend(args: {
   monthlyIncomeMinor: number
   tracks: Track[]
@@ -315,6 +338,16 @@ export function computeSafeToSpend(args: {
   const savingsRemainingMinor = savingsRemainingThisMonthMinor(tracks, transactions, today)
 
   /*
+  Deliberately independent of savingsRemainingMinor, and not double counting it.
+
+  setAside is money ALREADY put by in previous months; savingsRemaining is this
+  month's contribution still to make. A goal can legitimately have both - Rs
+  60,000 banked and Rs 20,000 still owed this cycle - and both are unavailable
+  to spend, for different reasons.
+  */
+  const setAsideMinor = setAsideInAccountsMinor(tracks)
+
+  /*
   Balance basis, when accounts exist.
 
   What you can spend is what you HOLD, less what is still promised out of it -
@@ -333,7 +366,7 @@ export function computeSafeToSpend(args: {
   const owed = owedMinor ?? 0
 
   const safeToSpendMinor = usingBalance
-    ? cash - owed - committedRemainingMinor - savingsRemainingMinor
+    ? cash - owed - committedRemainingMinor - savingsRemainingMinor - setAsideMinor
     : monthlyIncomeMinor - committedMinor - plannedSavingsMinor - spentMinor
 
   const daysRemaining = daysRemainingInMonth(today)
@@ -354,7 +387,8 @@ export function computeSafeToSpend(args: {
   */
   const poolAtStartOfTodayMinor = usingBalance
     ? // Add today's spending back to recover the balance as it stood this morning.
-      cash + spentTodayMinor - owed - committedRemainingMinor - savingsRemainingMinor
+      cash + spentTodayMinor - owed - committedRemainingMinor - savingsRemainingMinor -
+      setAsideMinor
     : monthlyIncomeMinor - committedMinor - plannedSavingsMinor - (spentMinor - spentTodayMinor)
 
   const todayAllowanceMinor = Math.floor(
@@ -379,6 +413,7 @@ export function computeSafeToSpend(args: {
   return {
     basis,
     preSalaryHeldMinor,
+    setAsideMinor,
     cashMinor: cash,
     owedMinor: owed,
     committedRemainingMinor,

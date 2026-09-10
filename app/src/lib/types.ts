@@ -45,6 +45,26 @@ export interface Track {
    */
   openingBalanceMinor?: number
 
+  /**
+   * Is that opening balance sitting in one of the user's tracked accounts?
+   *
+   * The same figure means two different things depending on where the money
+   * physically is, and only the user knows which:
+   *
+   * - FALSE (default) - held elsewhere: a mutual fund, a bank not added here.
+   *   It counts toward the goal's target but is not part of any account
+   *   balance, so it must not be subtracted from spendable cash.
+   *
+   * - TRUE - sitting in a tracked account, earmarked. The account balance
+   *   still shows it, because the bank still shows it, but it is spoken for
+   *   and Safe-to-Spend must not offer it.
+   *
+   * Without this distinction there is no way to say "this money is in my
+   * account, but it is not mine to spend" - the one thing an envelope budget
+   * exists to express.
+   */
+  openingInAccounts?: boolean
+
   /** goal: target to accumulate toward */
   targetMinor?: number
   plannedMonthlyMinor?: number

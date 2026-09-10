@@ -48,6 +48,10 @@ export function TrackForm({
   const [dueDay, setDueDay] = useState('1')
   const [planned, setPlanned] = useState('')
   const [opening, setOpening] = useState('')
+  /* Defaults to true: money you already have is far more often in your bank
+     than in an outside fund, and the wrong default here silently overstates
+     what is safe to spend. */
+  const [openingInAccounts, setOpeningInAccounts] = useState(true)
   const [raidable, setRaidable] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -58,6 +62,7 @@ export function TrackForm({
     setDueDay('1')
     setPlanned('')
     setOpening('')
+    setOpeningInAccounts(true)
     setRaidable(true)
   }
 
@@ -70,6 +75,9 @@ export function TrackForm({
     setDueDay(String(editing.dueDay ?? 1))
     setPlanned(editing.plannedMonthlyMinor ? String(editing.plannedMonthlyMinor / 100) : '')
     setOpening(editing.openingBalanceMinor ? String(editing.openingBalanceMinor / 100) : '')
+    // Existing tracks predate the flag; absent means "held elsewhere", which is
+    // the behaviour they already had, so editing one changes nothing by itself.
+    setOpeningInAccounts(editing.openingInAccounts === true)
     setRaidable(editing.raidable !== false)
   }, [editing])
 
@@ -88,6 +96,7 @@ export function TrackForm({
       commitmentAmountMinor: null as unknown as undefined,
       dueDay: null as unknown as undefined,
       openingBalanceMinor: null as unknown as undefined,
+      openingInAccounts: null as unknown as undefined,
       targetMinor: null as unknown as undefined,
       plannedMonthlyMinor: null as unknown as undefined,
       raidable: null as unknown as undefined,
@@ -104,12 +113,14 @@ export function TrackForm({
       base.targetMinor = toPaise(amount)
       base.plannedMonthlyMinor = toPaise(planned)
       base.openingBalanceMinor = toPaise(opening)
+      base.openingInAccounts = openingInAccounts
       base.raidable = raidable
     }
     if (type === 'project') {
       base.budgetMinor = toPaise(amount)
       base.plannedMonthlyMinor = toPaise(planned)
       base.openingBalanceMinor = toPaise(opening)
+      base.openingInAccounts = openingInAccounts
       base.phase = editing?.phase ?? 'accumulating'
     }
 
@@ -276,10 +287,33 @@ export function TrackForm({
               onChange={(e) => setOpening(e.target.value)}
               placeholder="60000"
             />
-            <p className="mt-1 mb-0 text-sm text-muted">
+            <p className="mt-1 mb-2 text-sm text-muted">
               Money already in this pot. Counts toward the target without inventing a
               transaction that never happened.
             </p>
+
+            {/*
+            Where the money physically is decides whether it is spendable, and
+            only the user knows. Ticked, the amount is inside a tracked account
+            and gets held back from Safe-to-Spend while the account balance
+            still shows it - which is what the bank shows too.
+            */}
+            <label className="flex items-start gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={openingInAccounts}
+                onChange={(e) => setOpeningInAccounts(e.target.checked)}
+              />
+              <span>
+                This money is sitting in one of my accounts
+                <span className="mt-0.5 block text-muted">
+                  Set it aside so Safe-to-Spend stops offering it. Your account balance
+                  is unchanged &mdash; the money really is still in the bank. Untick if
+                  it&rsquo;s held somewhere the app doesn&rsquo;t track, like a mutual fund.
+                </span>
+              </span>
+            </label>
           </div>
         )}
 

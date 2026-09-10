@@ -7,6 +7,7 @@ import {
   commitmentsRemainingThisMonthMinor,
   isSameDay,
   savingsRemainingThisMonthMinor,
+  setAsideInAccountsMinor,
   spentThisMonthMinor,
 } from './safeToSpend'
 import { toPaise, formatINR } from './money'
@@ -612,5 +613,136 @@ describe('a transfer between two goals credits only the destination', () => {
     const ref = new Date(2026, 8, 9)
     const contribution: Transaction = { ...move, id: 'c', toTrackId: undefined, trackId: 'g2' }
     expect(savingsRemainingThisMonthMinor([to], [contribution], ref)).toBe(600000)
+  })
+})
+
+/*
+Money set aside in a goal but still sitting in the bank.
+
+The case: Rs 60,000 of a Rs 2,00,000 Japan trip fund is already saved, but it
+has never physically left the savings account - it is earmarked, not moved. The
+account balance must keep showing it, because the bank still shows it, while
+Safe-to-Spend must stop offering it.
+
+Before this existed the same rupees were counted twice: once as progress toward
+the goal, and again as money free to spend.
+*/
+describe('set-aside savings held inside the accounts', () => {
+  const japan: Track = {
+    id: 'japan',
+    name: 'Japan Trip',
+    type: 'goal',
+    archived: false,
+    targetMinor: toPaise(200000),
+    plannedMonthlyMinor: toPaise(20000),
+    openingBalanceMinor: toPaise(60000),
+    openingInAccounts: true,
+    raidable: false,
+  }
+
+  const otherGoal: Track = {
+    id: 'other',
+    name: 'Emergency Fund',
+    type: 'goal',
+    archived: false,
+    plannedMonthlyMinor: toPaise(20000),
+  }
+
+  const rent: Track = {
+    id: 'rent',
+    name: 'Rent',
+    type: 'commitment',
+    archived: false,
+    commitmentAmountMinor: toPaise(78500),
+    dueDay: 10,
+  }
+
+  const ref = new Date(2026, 8, 10)
+  const cashMinor = toPaise(163122)
+
+  it('subtracts it, and reports it separately', () => {
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: 0,
+      tracks: [japan, otherGoal, rent],
+      transactions: [],
+      today: ref,
+      cashMinor,
+      owedMinor: 0,
+    })
+
+    expect(r.setAsideMinor).toBe(toPaise(60000))
+    // The account total is untouched - it still matches the bank.
+    expect(r.cashMinor).toBe(cashMinor)
+    // 1,63,122 − 78,500 − 40,000 − 60,000
+    expect(r.safeToSpendMinor).toBe(toPaise(163122 - 78500 - 40000 - 60000))
+  })
+
+  /*
+  The two are independent. Money banked in earlier months and this month's
+  contribution are both unavailable, for different reasons, and a goal can
+  carry both at once.
+  */
+  it('does not absorb this month s planned contribution', () => {
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: 0,
+      tracks: [japan, otherGoal, rent],
+      transactions: [],
+      today: ref,
+      cashMinor,
+      owedMinor: 0,
+    })
+    expect(r.savingsRemainingMinor).toBe(toPaise(40000))
+    expect(r.setAsideMinor).toBe(toPaise(60000))
+  })
+
+  it('is ignored when the money is held outside the tracked accounts', () => {
+    const mutualFund: Track = { ...japan, openingInAccounts: false }
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: 0,
+      tracks: [mutualFund, otherGoal, rent],
+      transactions: [],
+      today: ref,
+      cashMinor,
+      owedMinor: 0,
+    })
+    expect(r.setAsideMinor).toBe(0)
+    expect(r.safeToSpendMinor).toBe(toPaise(163122 - 78500 - 40000))
+  })
+
+  /* Tracks written before the flag existed keep exactly the behaviour they had. */
+  it('leaves pre-existing tracks alone when the flag is absent', () => {
+    const legacy: Track = { ...japan, openingInAccounts: undefined }
+    expect(setAsideInAccountsMinor([legacy])).toBe(0)
+  })
+
+  it('ignores archived goals and never counts a negative opening balance', () => {
+    expect(setAsideInAccountsMinor([{ ...japan, archived: true }])).toBe(0)
+    expect(setAsideInAccountsMinor([{ ...japan, openingBalanceMinor: -50000 }])).toBe(0)
+  })
+
+  it('does not apply on the income basis, which has no cash to earmark from', () => {
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: toPaise(120000),
+      tracks: [japan, otherGoal, rent],
+      transactions: [],
+      today: ref,
+    })
+    expect(r.basis).toBe('income')
+    expect(r.safeToSpendMinor).toBe(toPaise(120000 - 78500 - 40000))
+  })
+
+  /* Being over-committed is a real answer, not an error, and must not go weird. */
+  it('reports an honest overspend rather than clamping', () => {
+    const r = computeSafeToSpend({
+      monthlyIncomeMinor: 0,
+      tracks: [japan, otherGoal, rent],
+      transactions: [],
+      today: ref,
+      cashMinor: toPaise(100000),
+      owedMinor: 0,
+    })
+    expect(r.safeToSpendMinor).toBeLessThan(0)
+    expect(r.todayAllowanceMinor).toBe(0)
+    expect(r.leftTodayMinor).toBe(0)
   })
 })
