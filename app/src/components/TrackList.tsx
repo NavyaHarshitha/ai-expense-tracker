@@ -295,7 +295,7 @@ function TrackRow({
         <span
           aria-hidden="true"
           className={`pointer-events-none absolute inset-y-0 left-0 ${
-            over ? 'bg-danger-soft' : settled ? 'bg-good-soft/70' : 'bg-primary-soft/80'
+            over ? 'bg-danger-soft' : settled ? 'bg-row-paid' : 'bg-row-progress'
           }`}
           style={{
             width: `${pct}%`,

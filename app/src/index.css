@@ -47,6 +47,21 @@ as utilities instead of hand-written classes.
   --color-danger-soft: #fbeeec;
   /* Soft companion to --color-good, mirroring --color-danger-soft. */
   --color-good-soft: #f0f6ed;
+
+  /*
+  Row tints, kept apart from the badge and chip colours above.
+
+  A single token at a fixed opacity cannot suit both themes: the same wash that
+  is nearly invisible on a dark ground is a solid band across a light one. So
+  light and dark get their own values rather than one colour and an alpha.
+
+  Light stays a whisper - the list is long and a strong fill on every settled
+  row turns the section into stripes. Dark goes DEEPER rather than lighter,
+  which is the only direction that makes the tint more present without pushing
+  the muted caption sitting on top of it below the contrast floor.
+  */
+  --color-row-paid: #f7faf5;
+  --color-row-progress: #fef6f8;
   /* A caution that is not an error - near-duplicate names, burn-rate notices. */
   /* 4.32:1 on canvas before, a hair under AA. */
   --color-warn: #966709;
@@ -115,7 +130,11 @@ not for depth - brightens further still.
       --color-danger: #f08a8a;
       --color-danger-soft: #3d2836;
     --color-good-soft: #26382b;
+    --color-row-paid: #102614;
+    --color-row-progress: #241a45;
       --color-good-soft: #26382b;
+      --color-row-paid: #102614;
+      --color-row-progress: #241a45;
       --color-warn: #e0b45c;
       --color-good: #8fd0a0;
 
