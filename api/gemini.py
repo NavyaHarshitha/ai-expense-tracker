@@ -10,6 +10,10 @@ account identity - there is no API key to leak.
 
 Location is "global", not asia-south1: newer models are served from the global
 endpoint first, and gemini-3.6-flash 404s on every regional one.
+
+Setting GEMINI_API_KEY switches to the Developer API instead. That is the
+no-cost path for running this service locally against a project with no billing
+account - the free tier works there - and Vertex remains the default otherwise.
 """
 
 import json
@@ -27,7 +31,12 @@ PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "ai-expense-tracker-navya")
 LOCATION = "global"
 MODEL = "gemini-3.6-flash"
 
-client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
+API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if API_KEY:
+    client = genai.Client(api_key=API_KEY)
+else:
+    client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
 
 
 # --------------------------------------------------------------------------

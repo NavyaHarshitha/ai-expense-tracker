@@ -3,7 +3,8 @@
 **An expense tracker you talk to.** Say what you spent; it tells you what is genuinely left
 to spend today, after the rent, EMIs and SIPs that have not gone out yet.
 
-**Live:** https://ai-expense-tracker-navya.web.app
+**Live:** https://ai-expense-tracker-navya.web.app — manual entry, Safe-to-Spend and the
+dashboard. Voice, receipts and the monthly review need the AI service, which runs locally.
 
 ---
 
@@ -111,6 +112,13 @@ npm run dev        # http://localhost:5173
 Sign in with Google. The app works immediately against Firestore; voice and receipts
 additionally need the AI service (step 4).
 
+Once `api/.env` and `api/.venv` exist (step 4), one command runs both together, and
+Ctrl+C stops both:
+
+```bash
+./start-local.sh
+```
+
 ### 3. Deploy the security rules
 
 **Do this before using it with real data.** The rules are the entire authorization layer.
@@ -127,10 +135,19 @@ form still works fully.
 
 ```bash
 cd api
-pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
 gcloud auth application-default login      # first time only
-uvicorn main:app --reload --port 8080
+.venv/bin/uvicorn main:app --reload --port 8080
+```
+
+On a project with no billing account, Vertex AI is unavailable. Use a free key from
+[Google AI Studio](https://aistudio.google.com/apikey) instead — setting it switches the
+service to the Gemini Developer API's free tier:
+
+```bash
+echo 'GEMINI_API_KEY=your-key' > api/.env     # git-ignored
 ```
 
 Then point the client at it, in `app/.env.local`:
