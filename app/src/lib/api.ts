@@ -17,7 +17,7 @@ import {
   type InsightFigures,
 } from './gemini'
 import { readGeminiKey } from './geminiKey'
-import type { PaymentMethod } from './types'
+import type { Movement, PaymentMethod } from './types'
 
 export { ApiError } from './gemini'
 
@@ -30,6 +30,8 @@ export interface ParsedCandidate {
   occurred_on?: string
   note?: string
   confidence: number
+  /** Absent means expense. "Ajio credited 509" is a refund, and must stay one. */
+  movement?: Movement
 }
 
 export interface MonthlyInsight {

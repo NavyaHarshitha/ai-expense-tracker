@@ -220,7 +220,9 @@ export function QuickAdd({
         occurredOn: candidate.occurred_on || todayIso(),
         // toAmountMinor, not toPaise: a model-supplied figure is untrusted input.
         amountMinor: toAmountMinor(candidate.amount_rupees),
-        movement: 'expense',
+        // The planner's own reading. Hard-coding 'expense' here turned every
+        // spoken refund or income into money going out.
+        movement: candidate.movement ?? 'expense',
         trackId: trackIdForCandidate,
         categoryName: candidate.category,
         description: candidate.description || candidate.category,
@@ -357,6 +359,7 @@ export function QuickAdd({
             payment_method: a.kind === 'create_expense' ? a.paymentMethod : 'upi',
             occurred_on: a.kind === 'create_expense' ? (a.occurredOn ?? '') : '',
             note: a.kind === 'create_expense' ? (a.note ?? '') : '',
+            movement: a.kind === 'create_expense' ? a.movement : 'expense',
             // The planner does not score confidence, so amount alone decides
             // whether this needs a tap.
             confidence: 1,

@@ -2,8 +2,13 @@ import { useState } from 'react'
 
 import type { ParsedCandidate } from '../lib/api'
 import { formatINR, toPaise } from '../lib/money'
-import { PAYMENT_METHOD_LABELS, type PaymentMethod, type Track } from '../lib/types'
+import { MOVEMENT_LABELS, PAYMENT_METHOD_LABELS, type PaymentMethod, type Track } from '../lib/types'
 import { field, linkButton, primaryButton } from '../lib/ui'
+
+/** Refunds and income are money coming back, and are shown with a + to say so. */
+function moneyIn(candidate: ParsedCandidate): boolean {
+  return candidate.movement === 'refund' || candidate.movement === 'income'
+}
 
 /**
  * Above this, a human taps to confirm. Below it, the expense commits straight
@@ -92,10 +97,14 @@ function SavedRow({
       <p className="m-0">
         <span className="font-extrabold text-good">Saved</span>{' '}
         <span className="tnum font-bold text-ink">
+          {moneyIn(item.candidate) ? '+' : ''}
           {formatINR(toPaise(item.candidate.amount_rupees))}
         </span>{' '}
         <span className="text-muted">
           &middot; {item.candidate.description} &middot; {item.candidate.category}
+          {item.candidate.movement && item.candidate.movement !== 'expense' && (
+            <> &middot; {MOVEMENT_LABELS[item.candidate.movement]}</>
+          )}
         </span>
       </p>
 
