@@ -7,7 +7,7 @@ so the file can be committed and the values swapped per environment.
 Note these particular values are NOT secrets - a Firebase web config is meant to
 ship to the browser, and per-user isolation is enforced by Firestore security
 rules, not by hiding the config. The Gemini key is a different matter entirely:
-that stays server-side, in Secret Manager.
+each user's own key stays in their browser - see geminiKey.ts.
 */
 
 import { initializeApp } from 'firebase/app'

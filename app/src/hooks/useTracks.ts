@@ -39,11 +39,13 @@ export function useTracks(uid: string | undefined) {
     )
   }, [uid])
 
-  async function createTrack(uid: string, track: Omit<Track, 'id'>) {
-    await addDoc(collection(db, userPath(uid, 'tracks')), {
+  /** Returns the new track's id, so a caller can file something under it straight away. */
+  async function createTrack(uid: string, track: Omit<Track, 'id'>): Promise<string> {
+    const ref = await addDoc(collection(db, userPath(uid, 'tracks')), {
       ...track,
       createdAt: Date.now(),
     })
+    return ref.id
   }
 
   /**

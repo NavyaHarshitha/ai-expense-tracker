@@ -8,10 +8,9 @@ import { CategoryManager } from '../components/CategoryManager'
 import { SafeToSpendCard } from '../components/SafeToSpendCard'
 import { TrackForm } from '../components/TrackForm'
 import { TrackList } from '../components/TrackList'
-import { seedDemoData } from '../dev/seed'
 import { formatINR } from '../lib/money'
 import { TRACK_TYPE_LABELS, type Track } from '../lib/types'
-import { card, linkButton, primaryButton, secondaryButton, sectionTitle } from '../lib/ui'
+import { card, linkButton, primaryButton, sectionTitle } from '../lib/ui'
 
 /*
 Home answers "where do I stand?" - income, what's already committed, and how the
@@ -73,7 +72,6 @@ export function Home() {
   }, [transactions])
 
 
-  const [seeding, setSeeding] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Track | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
@@ -86,16 +84,6 @@ export function Home() {
   const commitments = tracks.filter((t) => t.type === 'commitment')
   const spending = tracks.filter((t) => t.type === 'spending')
   const goalsAndProjects = tracks.filter((t) => t.type === 'goal' || t.type === 'project')
-
-  async function seed() {
-    if (seeding) return
-    setSeeding(true)
-    try {
-      await seedDemoData(uid)
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   /*
   A track nothing references is deleted; one with history is archived, so its
@@ -151,16 +139,6 @@ export function Home() {
           <Link to="/add" className={primaryButton}>
             Add your first expense
           </Link>
-          {import.meta.env.DEV && (
-            <button
-              type="button"
-              className={`${secondaryButton} ml-3`}
-              onClick={seed}
-              disabled={seeding}
-            >
-              {seeding ? 'Seeding…' : 'Seed demo data'}
-            </button>
-          )}
         </section>
       )}
 
@@ -300,18 +278,14 @@ export function Home() {
         <h2 className={sectionTitle}>{editing ? 'Edit track' : 'Add a track'}</h2>
         <TrackForm
           editing={editing}
-          onCreate={(track) => createTrack(uid, track)}
+          onCreate={async (track) => {
+            await createTrack(uid, track)
+          }}
           onUpdate={(id, patch) => updateTrack(uid, id, patch)}
           onArchive={(id) => archiveTrack(uid, id)}
           onCancelEdit={() => setEditing(null)}
         />
       </section>
-
-      {import.meta.env.DEV && transactions.length === 0 && tracks.length > 0 && (
-        <button type="button" className={secondaryButton} onClick={seed} disabled={seeding}>
-          {seeding ? 'Seeding…' : 'Seed demo data (2 months)'}
-        </button>
-      )}
     </div>
   )
 }

@@ -17,9 +17,9 @@
         "source": "**",
         "headers": [
           {
-            "comment": "Clickjacking. A financial app framed inside another page can be overlaid so that a click lands on a control the user cannot see. frame-ancestors is the modern directive and X-Frame-Options the fallback for older agents; both say the same thing. This restricts who may frame US, and does not affect the auth iframe this app itself hosts.",
+            "comment": "Each user's Gemini key sits in localStorage, where any script on this origin can read it - so the real protection is controlling which scripts can run at all. script-src allows only this site's own files and the Google script Firebase's sign-in popup needs; no inline script and no eval, which is what an injection would rely on. connect-src limits where data can be SENT, so even a script that got in could not post the key anywhere but Google. Styles allow 'unsafe-inline' because React and the charts set style attributes; a style cannot read storage. frame-ancestors 'none' is the clickjacking guard: a financial app framed inside another page can be overlaid so that a click lands on a control the user cannot see.",
             "key": "Content-Security-Policy",
-            "value": "frame-ancestors 'none'"
+            "value": "default-src 'self'; script-src 'self' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://*.googleapis.com https://apis.google.com; frame-src https://ai-expense-tracker-navya.firebaseapp.com https://accounts.google.com https://apis.google.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
           },
           { "key": "X-Frame-Options", "value": "DENY" },
           {

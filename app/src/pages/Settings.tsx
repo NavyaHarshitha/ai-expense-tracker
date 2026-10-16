@@ -63,9 +63,7 @@ export function Settings() {
         <h1 className={sectionTitle}>Your Gemini key</h1>
 
         <p className="mt-0 text-ink-soft">
-          Voice entry, receipt photos and the written monthly review use Google&rsquo;s Gemini.
-          Each person uses their own free key, so it costs you nothing and nobody else&rsquo;s
-          usage counts against yours. Everything else in the app works without one.
+          Voice entry, receipt photos and the Dashboard review need a free Gemini key.
         </p>
 
         {saved ? (
@@ -85,7 +83,7 @@ export function Settings() {
             </button>
           </div>
         ) : (
-          <ol className="my-6 grid gap-2 pl-5 text-ink-soft">
+          <ol className="my-6 grid list-decimal gap-2 pl-5 text-ink-soft">
             <li>
               Open{' '}
               <a
@@ -95,13 +93,13 @@ export function Settings() {
                 className="font-bold text-primary-dark underline"
               >
                 Google AI Studio
-              </a>{' '}
-              and sign in with any Google account.
+              </a>
+              .
             </li>
             <li>
-              Click <strong>Create API key</strong>. If it asks for a project, let it create one.
+              Click <strong>Create API key</strong>.
             </li>
-            <li>Copy the key and paste it below.</li>
+            <li>Copy it and paste it below.</li>
           </ol>
         )}
 
@@ -139,22 +137,12 @@ export function Settings() {
       </section>
 
       <section className={cardPadded}>
-        <h2 className={sectionTitle}>Where your key goes</h2>
-        <ul className="m-0 grid gap-3 pl-5 text-ink-soft">
-          <li>
-            It is stored <strong>in this browser only</strong> - not in your account, and not
-            on any server of this app. On a new phone or laptop, add it again.
-          </li>
-          <li>
-            It is sent only to Google, with each voice entry, receipt or review you ask for.
-          </li>
-          <li>
-            On Google&rsquo;s free tier, Google may use what you send to improve its products.
-            If you would rather not, type expenses in by hand - that never reaches Gemini.
-          </li>
-          <li>
-            You can delete the key at any time in AI Studio, and it stops working everywhere.
-          </li>
+        <h2 className={sectionTitle}>Good to know</h2>
+        <ul className="m-0 grid list-disc gap-2 pl-5 text-ink-soft">
+          <li>Your key is stored only in this browser. On a new device, add it again.</li>
+          <li>On the free tier, Google may use your requests to improve its products.</li>
+          <li>Prefer not to? Skip the key and type expenses in by hand.</li>
+          <li>You can delete the key anytime in AI Studio.</li>
         </ul>
       </section>
     </div>

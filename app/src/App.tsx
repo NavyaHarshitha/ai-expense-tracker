@@ -32,7 +32,7 @@ export interface AppContext {
   /** Charts need the actual colour in JS, not through a CSS variable. */
   theme: ResolvedTheme
   today: Date
-  createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<void>
+  createTrack: (uid: string, track: Omit<Track, 'id'>) => Promise<string>
   updateTrack: (uid: string, id: string, patch: Partial<Track>) => Promise<void>
   archiveTrack: (uid: string, id: string) => Promise<void>
   restoreTrack: (uid: string, id: string) => Promise<void>

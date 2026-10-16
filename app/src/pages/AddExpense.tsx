@@ -21,6 +21,7 @@ export function AddExpense() {
     accounts,
     today,
     createTransaction,
+    createTrack,
     updateTransaction,
     softDelete,
     renameCategory,
@@ -77,6 +78,7 @@ export function AddExpense() {
           today={today}
           editing={editing}
           onAdd={(txn) => createTransaction(uid, txn)}
+          onCreateTrack={(track) => createTrack(uid, track)}
           onUpdate={(id, patch) => updateTransaction(uid, id, patch)}
           onDelete={(id) => softDelete(uid, id)}
           onCancelEdit={() => setEditing(null)}

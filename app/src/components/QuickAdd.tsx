@@ -35,6 +35,9 @@ import {
   sectionTitle,
 } from '../lib/ui'
 
+/** What a first expense is filed under when the user has no tracks yet. */
+const DEFAULT_TRACK_NAME = 'Daily Expenses'
+
 function todayIso() {
   // Local date, not UTC - an expense at 1am IST belongs to today, not yesterday.
   const d = new Date()
@@ -62,6 +65,7 @@ export function QuickAdd({
   today,
   editing,
   onAdd,
+  onCreateTrack,
   onUpdate,
   onDelete,
   onCancelEdit,
@@ -81,6 +85,8 @@ export function QuickAdd({
   today: Date
   editing?: Transaction | null
   onAdd: (txn: Omit<Transaction, 'id'>) => Promise<string>
+  /** Used once, to give a first expense somewhere to live. Returns the new id. */
+  onCreateTrack: (track: Omit<Track, 'id'>) => Promise<string>
   onUpdate: (id: string, patch: Partial<Transaction>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onCancelEdit: () => void
@@ -145,9 +151,19 @@ export function QuickAdd({
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const amountMinor = toPaise(amount)
-    if (amountMinor <= 0 || !effectiveTrackId || busy) return
+    if (amountMinor <= 0 || busy) return
 
     setBusy(true)
+
+    /*
+    Every expense must come out of a track, and a new user has none. Rather
+    than hide the form until they make one somewhere else, the first save
+    creates the same default voice entry would - and the Track field said so
+    before they pressed Save.
+    */
+    const trackIdToUse =
+      effectiveTrackId ||
+      (await onCreateTrack({ name: DEFAULT_TRACK_NAME, type: 'spending', archived: false }))
 
     const fields = {
       /*
@@ -159,7 +175,7 @@ export function QuickAdd({
       occurredOn: occurredOn || todayIso(),
       amountMinor,
       movement,
-      trackId: effectiveTrackId,
+      trackId: trackIdToUse,
       categoryName,
       description: description.trim() || categoryName,
       // Written explicitly so clearing a note actually clears it.
@@ -555,15 +571,9 @@ export function QuickAdd({
         </div>
       )}
 
-      {tracks.length === 0 && !editing ? (
-        <p className="m-0 text-center text-muted">
-          No tracks yet. Try &ldquo;rent is 18000 due on the 5th&rdquo;, or add one on the Home page.
-        </p>
-      ) : (
-        <>
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className={`${sectionTitle} mb-0`}>
-          {editing ? 'Edit Expense' : 'Or type it in'}
+          {editing ? 'Edit Expense' : geminiKey ? 'Or type it in' : 'Add an expense'}
         </h2>
         {editing && (
           <span className="text-sm text-muted">
@@ -615,12 +625,18 @@ export function QuickAdd({
               value={effectiveTrackId}
               onChange={(e) => setTrackId(e.target.value)}
             >
+              {tracks.length === 0 && <option value="">{DEFAULT_TRACK_NAME}</option>}
               {tracks.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>
               ))}
             </select>
+            {tracks.length === 0 && (
+              <p className="mt-1 mb-0 text-xs text-muted">
+                Your first budget. Add more, like Rent or a Trip, on Home.
+              </p>
+            )}
           </div>
 
           <div>
@@ -752,8 +768,6 @@ export function QuickAdd({
           {flash && <span className="text-sm font-bold text-good">{flash}</span>}
         </div>
       </form>
-        </>
-      )}
     </section>
   )
 }

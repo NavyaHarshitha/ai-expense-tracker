@@ -95,7 +95,7 @@ export function Dashboard() {
     return (
       <div className="rounded-card border border-dashed border-line-strong p-12 text-center">
         <h1 className="mb-2 text-2xl font-bold text-ink">Nothing to analyse yet</h1>
-        <p className="m-0 text-muted">Add an expense, or seed demo data from the Home page.</p>
+        <p className="m-0 text-muted">Add an expense and your charts will appear here.</p>
       </div>
     )
   }
