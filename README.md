@@ -3,8 +3,11 @@
 **An expense tracker you talk to.** Say what you spent; it tells you what is genuinely left
 to spend today, after the rent, EMIs and SIPs that have not gone out yet.
 
-**Live:** https://ai-expense-tracker-navya.web.app — manual entry, Safe-to-Spend and the
-dashboard. Voice, receipts and the monthly review need the AI service, which runs locally.
+**Live:** https://ai-expense-tracker-navya.web.app
+
+Open it, sign in with Google, and it works. For voice, receipts and the written monthly
+review, add your own free Gemini key in **Settings** — it takes about a minute, and the
+app walks you through it.
 
 ---
 
@@ -39,6 +42,8 @@ one sentence instead.
 - **Dashboard.** Spending by category, a daily trend, month-on-month comparison, and a
   written monthly review generated from figures the app already computed.
 - **Works offline** and installs to a phone home screen.
+- **Costs nothing to run.** Each person brings a free Gemini key, so there is no server and
+  no bill, and one person's usage never touches anyone else's allowance.
 
 ---
 
@@ -52,19 +57,33 @@ one sentence instead.
       │   read + write   security rules are the ONLY authorization layer
       │   onSnapshot     offline-persistent
       │
-      └──────────────►  Cloud Run: expense-api  (FastAPI)
-          POST /plan     1. verify Firebase ID token      → 401
-               /parse    2. rate limit per user           → 429
-               /insights 3. assemble prompt (user text fenced as data)
-                         4. filter response to a tool allowlist
-                                │
-                                └──►  Vertex AI · gemini-3.6-flash
+      └──────────────►  Gemini API · gemini-3.6-flash
+          the user's own key, from this device only
+            1. assemble prompt (user text fenced as data)
+            2. filter response to a tool allowlist, capped at 20 actions
+            3. validate every action before it is shown  (planActions.ts)
+            4. the client writes to Firestore: structural changes after
+               an explicit Apply, small expenses at once with an Undo
 ```
 
-**The load-bearing decision: the AI service holds no write credentials.** `/plan` and
-`/parse` return *intended actions*. The client displays them, the user confirms, and the
-client performs the write through its own path. So there is exactly one route into the
+**The load-bearing decision: the model never writes anything.** A plan comes back as
+*intended actions*. The client validates them and shows them; a new track, a rename or a
+large amount waits for an explicit Apply, and a small expense saves at once with an Undo.
+Either way the client performs the write through its own path. So there is exactly one route into the
 ledger, and the Firestore security rules govern all of it.
+
+**Why there is no backend.** The first version ran the model behind a FastAPI service on
+Cloud Run, billed to the project, with token verification and per-user rate limiting to
+protect those credits (tag [`v1-cloud-run`](https://github.com/NavyaHarshitha/ai-expense-tracker/tree/v1-cloud-run)). Once the free trial
+ended, hosting it for friends meant paying for their usage. So each user now brings a free
+key from Google AI Studio, and the browser calls Gemini directly. The server's guards
+existed to protect a shared, billed key; with no shared key there is nothing left for them
+to protect. The prompts, tool declarations and output checks moved into
+`app/src/lib/gemini.ts` unchanged, and the property above survived the move intact — the
+server never held write credentials either.
+
+The key is stored in that browser only (`localStorage`), never in Firestore, and is sent
+only to Google, in a header rather than the URL.
 
 Two more worth knowing:
 
@@ -81,7 +100,6 @@ Two more worth knowing:
 ### Prerequisites
 
 - Node.js 20+
-- Python 3.11+ (only to run the AI service locally)
 - A Firebase project with **Authentication** (Google provider) and **Cloud Firestore** enabled
 - Java 11+ (only for the security-rules tests, which use the Firestore emulator)
 
@@ -109,15 +127,9 @@ Per-user isolation comes from the security rules, not from hiding the config.
 npm run dev        # http://localhost:5173
 ```
 
-Sign in with Google. The app works immediately against Firestore; voice and receipts
-additionally need the AI service (step 4).
-
-Once `api/.env` and `api/.venv` exist (step 4), one command runs both together, and
-Ctrl+C stops both:
-
-```bash
-./start-local.sh
-```
+Sign in with Google. The app works immediately against Firestore. For voice, receipts
+and the monthly review, open **Settings** and add a free key from
+[Google AI Studio](https://aistudio.google.com/apikey).
 
 ### 3. Deploy the security rules
 
@@ -127,51 +139,6 @@ Ctrl+C stops both:
 cd ..
 npx firebase-tools deploy --only firestore:rules --project YOUR_PROJECT_ID
 ```
-
-### 4. The AI service (optional for local development)
-
-Voice, receipts and the monthly review call a small FastAPI service. Without it, the manual
-form still works fully.
-
-```bash
-cd api
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
-gcloud auth application-default login      # first time only
-.venv/bin/uvicorn main:app --reload --port 8080
-```
-
-On a project with no billing account, Vertex AI is unavailable. Use a free key from
-[Google AI Studio](https://aistudio.google.com/apikey) instead — setting it switches the
-service to the Gemini Developer API's free tier:
-
-```bash
-echo 'GEMINI_API_KEY=your-key' > api/.env     # git-ignored
-```
-
-Then point the client at it, in `app/.env.local`:
-
-```
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-To deploy it:
-
-```bash
-gcloud run deploy expense-api --source api --region asia-south1 \
-  --allow-unauthenticated --min-instances=0 --max-instances=10 \
-  --concurrency=40 --cpu=1 --memory=512Mi
-```
-
-Grant the Cloud Run runtime service account `roles/aiplatform.user` so it can reach Vertex
-AI. The service is `--allow-unauthenticated` because the browser calls it directly, but every
-request must carry a valid Firebase ID token — that check is the only thing between the
-internet and a metered model, so it runs before anything else.
-
-> **Vertex AI, not the Gemini Developer API.** The Developer API's free tier does not work on
-> a billing-enabled project (`429 prepayment credits are depleted`). Vertex authenticates as
-> the Cloud Run service account, which means **no API key exists that could be leaked**.
 
 ---
 
@@ -202,14 +169,11 @@ npx firebase emulators:exec --only firestore --project rules-test \
 app/                  React client — the whole UI and all financial arithmetic
   src/lib/            pure functions: safeToSpend, accounts, insights,
                       money, sanitize, filterTransactions, planActions
+  src/lib/gemini.ts   prompts, tool declarations, size caps, tool allowlist
+  src/lib/geminiKey.ts  the user's key, kept on this device
   src/hooks/          Firestore subscriptions and capture hooks
   src/components/     UI
-  src/pages/          Home · Add Expense · Dashboard
-api/                  FastAPI service on Cloud Run
-  main.py             routes, size caps, tool allowlist
-  gemini.py           Vertex AI client, prompts, tool declarations
-  auth.py             Firebase ID token verification
-  limits.py           per-user rate limiting
+  src/pages/          Home · Add Expense · Dashboard · Settings
 test/rules/           Firestore security-rules tests (emulator)
 firestore.rules       the entire authorization layer
 firebase.json         hosting config and security headers
@@ -227,7 +191,7 @@ tests beside it.
 ## Testing
 
 ```
-223 unit tests      app/src/**/*.test.ts
+255 unit tests      app/src/**/*.test.ts
  32 rules tests     test/rules/ — against the Firestore emulator
 ```
 
@@ -248,9 +212,8 @@ actually checked.
 | --- | --- |
 | Search across 10,000 transactions | 0.44 ms |
 | Safe-to-Spend recompute, 10,000 transactions | 10 ms |
-| Initial page payload | 991 kB raw / **295 kB gzipped** |
-| API latency | p50 99 ms · p95 130 ms · p99 343 ms |
-| API errors, 200 requests at 20 concurrent | 0 |
+| Initial page payload | 998 kB raw / **294 kB gzipped** |
+| Gemini client, loaded only when needed | 16 kB raw / 7 kB gzipped |
 
 Search is the one that mattered: it runs on every keystroke, so it has one animation frame
 (16.7 ms) to finish. An index is built once per data change, not once per keystroke.
@@ -287,9 +250,11 @@ security rules*, not merely avoided by the client.
   the account.
 - No UI for transfers between your own accounts; record them as two entries.
 - Automatic ingestion of bank-alert emails is designed but not built.
-- Rate limiting is per Cloud Run instance rather than shared, so the effective ceiling scales
-  with instance count.
-- A full `script-src` Content Security Policy is not deployed — only `frame-ancestors`.
+- The Gemini key is per device: on a new phone or laptop, it has to be added again.
+- A full `script-src` Content Security Policy is not deployed — only `frame-ancestors`. That
+  matters more now that a key sits in `localStorage`, where injected script could read it.
+  The exposure is a free-tier key the user can revoke in one click, which is why it is
+  acceptable here, but a strict CSP is the next hardening step.
 
 ---
 
@@ -297,6 +262,6 @@ security rules*, not merely avoided by the client.
 
 React 19 · TypeScript (strict) · Vite 8 · Tailwind CSS v4 · Recharts · Vitest
 · Firebase Authentication · Cloud Firestore · Firebase Hosting
-· FastAPI · Cloud Run · Vertex AI (Gemini 3.6 Flash)
+· Gemini API (Gemini 3.6 Flash), called from the browser
 
 Built for the Google Patchamomma 2026 Build Phase.

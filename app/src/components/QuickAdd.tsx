@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { ActionPlan } from './ActionPlan'
 import { ReceiptButton } from './ReceiptButton'
 import { HeardPanel } from './HeardPanel'
 import { ParsedCandidates, needsConfirmation, type PendingCandidate } from './ParsedCandidates'
 import { VoiceButton } from './VoiceButton'
+import { useGeminiKey } from '../hooks/useGeminiKey'
 import { usePlanExecutor } from '../hooks/usePlanExecutor'
 import { useReceiptCapture } from '../hooks/useReceiptCapture'
 import { useVoiceCapture } from '../hooks/useVoiceCapture'
@@ -193,6 +195,7 @@ export function QuickAdd({
   const [parseError, setParseError] = useState<string | null>(null)
 
   const executor = usePlanExecutor(uid, tracks, categoryDocs, onRenameCategory, onAdd)
+  const geminiKey = useGeminiKey()
 
   /** Write one expense through the SAME path the form uses - no second way in. */
   const commit = useCallback(
@@ -440,7 +443,23 @@ export function QuickAdd({
 
   return (
     <section className={`${cardPadded} ${editing ? 'border-l-4 border-l-primary' : ''}`}>
-      {!editing && (
+      {/*
+      Without a key, the microphone would record and then fail. Say what is
+      needed and where to get it instead - the form below still works.
+      */}
+      {!editing && !geminiKey && (
+        <div className="mb-6 rounded-field bg-primary-soft px-4 py-4">
+          <p className="m-0 font-bold text-ink">Say it instead of typing it</p>
+          <p className="mt-1 mb-3 text-ink-soft">
+            Voice entry and receipt photos need a free Gemini key. It takes about a minute.
+          </p>
+          <Link to="/settings" className={secondaryButton}>
+            Add your key
+          </Link>
+        </div>
+      )}
+
+      {!editing && geminiKey && (
         <div className="mb-6 grid gap-4">
           <VoiceButton
             state={voice.state}

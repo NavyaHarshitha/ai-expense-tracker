@@ -65,7 +65,7 @@ export function useToday(): Date {
   return useMemo(() => new Date(`${dayKey}T00:00:00`), [dayKey])
 }
 
-/** The same day key, for sending the client's real date to the server. */
+/** The same day key, for telling the model the device's real date. */
 export function todayKey(): string {
   return localDayKey(new Date())
 }

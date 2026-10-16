@@ -71,6 +71,7 @@ const NAV = [
   { to: '/', label: 'Home', end: true },
   { to: '/add', label: 'Add Expense', end: false },
   { to: '/dashboard', label: 'Dashboard', end: false },
+  { to: '/settings', label: 'Settings', end: false },
 ]
 
 export default function App() {
@@ -237,11 +238,11 @@ export default function App() {
       <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur-md">
         <nav
           aria-label="Main"
-          className="mx-auto flex min-h-[72px] w-[min(1100px,90%)] items-center justify-between gap-4"
+          className="mx-auto flex min-h-[72px] w-[min(1100px,90%)] flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2"
         >
           <span className="text-xl font-extrabold text-primary-dark">Safe to Spend</span>
 
-          <ul className="flex list-none items-center gap-2 p-0">
+          <ul className="m-0 flex list-none flex-wrap items-center gap-1 p-0 sm:gap-2">
             {NAV.map((item) => (
               <li key={item.to}>
                 <NavLink

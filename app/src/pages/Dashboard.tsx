@@ -12,7 +12,10 @@ import {
   YAxis,
 } from 'recharts'
 
+import { Link } from 'react-router-dom'
+
 import { useApp } from '../App'
+import { useGeminiKey } from '../hooks/useGeminiKey'
 import { useMonthlyInsight } from '../hooks/useMonthlyInsight'
 import { formatINR } from '../lib/money'
 import {
@@ -77,13 +80,15 @@ export function Dashboard() {
 
   const monthName = today.toLocaleString('en-IN', { month: 'long', year: 'numeric' })
 
+  const geminiKey = useGeminiKey()
+
   const written = useMonthlyInsight({
     uid,
     today,
     result,
     transactions,
     tracks,
-    enabled: transactions.length > 0,
+    enabled: transactions.length > 0 && geminiKey !== '',
   })
 
   if (transactions.length === 0) {
@@ -252,6 +257,16 @@ export function Dashboard() {
         they are the evidence it refers to. If the narrative and the cards
         disagree, the model invented a number and the prompt is wrong.
         */}
+        {!geminiKey && !written.insight && (
+          <p className={`${card} mb-4 border-l-4 border-l-primary p-6 text-ink-soft`}>
+            Add a free Gemini key in{' '}
+            <Link to="/settings" className="font-bold text-primary-dark underline">
+              Settings
+            </Link>{' '}
+            and a written review of your month will appear here.
+          </p>
+        )}
+
         {(written.insight || written.loading || written.error) && (
           <div className={`${card} mb-4 border-l-4 border-l-primary p-6`}>
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">

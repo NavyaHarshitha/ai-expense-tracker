@@ -9,7 +9,7 @@ import { NotFound } from './pages/NotFound.tsx'
 import './index.css'
 
 /*
-Home loads eagerly - it is the landing route. The other two are lazy.
+Home loads eagerly - it is the landing route. The others are lazy.
 
 Dashboard alone pulls in Recharts, which was the bulk of a 1.29 MB initial
 bundle; charts should not be downloaded by someone who only wants to log a
@@ -21,15 +21,19 @@ const AddExpense = lazy(() =>
 const Dashboard = lazy(() =>
   import('./pages/Dashboard.tsx').then((m) => ({ default: m.Dashboard })),
 )
+const Settings = lazy(() =>
+  import('./pages/Settings.tsx').then((m) => ({ default: m.Settings })),
+)
 
 function Loading() {
   return <div className="py-16 text-center text-muted">Loading…</div>
 }
 
 /*
-Three pages, mirroring the original vanilla app: Home, Add Expense, Dashboard.
-App is the shell - it owns auth and the Firestore subscriptions, and hands them
-down through the router outlet so each page reads the same live data.
+Three pages, mirroring the original vanilla app: Home, Add Expense, Dashboard -
+plus Settings, where each user adds their own Gemini key. App is the shell - it
+owns auth and the Firestore subscriptions, and hands them down through the
+router outlet so each page reads the same live data.
 */
 const router = createBrowserRouter([
   {
@@ -52,6 +56,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<Loading />}>
             <Dashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <Settings />
           </Suspense>
         ),
       },
