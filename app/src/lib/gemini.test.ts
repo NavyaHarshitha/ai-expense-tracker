@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ApiError,
+  FALLBACK_MODEL,
+  MODEL,
   MAX_ACTIONS,
   MAX_AUDIO_BASE64,
   MAX_IMAGE_BASE64,
@@ -11,6 +13,7 @@ import {
   buildPlanSystem,
   describeFailure,
   describeTrack,
+  forFallback,
   generate,
   pickMime,
   readInsightResponse,
@@ -222,7 +225,14 @@ describe('describeFailure', () => {
 })
 
 describe('generate', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  const ok = (body: object = reply({ text: 'ok' })) => new Response(JSON.stringify(body), { status: 200 })
+  const status = (code: number) => new Response('{}', { status: code })
+  const urlOf = (spy: ReturnType<typeof vi.fn>, call: number) => String(spy.mock.calls[call][0])
 
   it('asks for a key instead of calling out without one', async () => {
     const fetchSpy = vi.fn()
@@ -231,56 +241,83 @@ describe('generate', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('sends the key in a header, never in the URL', async () => {
-    const fetchSpy = vi.fn().mockResolvedValue(new Response(JSON.stringify(reply()), { status: 200 }))
+  it('sends the key in a header, never in the URL, and says which model answered', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(ok())
     vi.stubGlobal('fetch', fetchSpy)
 
-    await generate('secret-key', {})
+    const result = await generate('secret-key', {})
 
-    const [url, init] = fetchSpy.mock.calls[0]
-    expect(String(url)).not.toContain('secret-key')
-    expect((init as RequestInit).headers).toMatchObject({ 'x-goog-api-key': 'secret-key' })
+    expect(urlOf(fetchSpy, 0)).not.toContain('secret-key')
+    expect((fetchSpy.mock.calls[0][1] as RequestInit).headers).toMatchObject({ 'x-goog-api-key': 'secret-key' })
+    expect(result.model).toBe(MODEL)
   })
 
-  it('turns an HTTP failure into a typed error', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 429 })))
-    await expect(generate('k', {})).rejects.toMatchObject({ code: 'quota', status: 429 })
+  it.each([503, 500, 429])('moves to the fallback model on a %i', async (code) => {
+    const fetchSpy = vi.fn().mockResolvedValueOnce(status(code)).mockResolvedValueOnce(ok())
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await generate('k', {})
+
+    expect(result.model).toBe(FALLBACK_MODEL)
+    expect(urlOf(fetchSpy, 0)).toContain(MODEL)
+    expect(urlOf(fetchSpy, 1)).toContain(FALLBACK_MODEL)
   })
 
-  it('retries an overloaded model once, quietly', async () => {
+  /*
+  The failure the user actually hit: a busy model that neither answers nor
+  fails. Without a ceiling per attempt the whole call waited 45 seconds and
+  then gave up without trying anything else.
+  */
+  it('moves to the fallback when the first model stalls', async () => {
     vi.useFakeTimers()
-    const fetchSpy = vi
-      .fn()
-      .mockResolvedValueOnce(new Response('{}', { status: 503 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(reply({ text: 'ok' })), { status: 200 }))
+    const stall = (_: unknown, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) =>
+        init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))),
+      )
+    const fetchSpy = vi.fn().mockImplementationOnce(stall).mockResolvedValueOnce(ok())
     vi.stubGlobal('fetch', fetchSpy)
 
     const pending = generate('k', {})
-    await vi.runAllTimersAsync()
-    await expect(pending).resolves.toEqual(reply({ text: 'ok' }))
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
-    vi.useRealTimers()
+    await vi.advanceTimersByTimeAsync(20_000)
+    await expect(pending).resolves.toMatchObject({ model: FALLBACK_MODEL })
   })
 
-  it('does not retry a used-up allowance, and gives up after one retry', async () => {
-    vi.useFakeTimers()
-    const quota = vi.fn().mockResolvedValue(new Response('{}', { status: 429 }))
-    vi.stubGlobal('fetch', quota)
+  it('gives up after the fallback, with the fallback’s reason', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(status(503)).mockResolvedValueOnce(status(429)))
     await expect(generate('k', {})).rejects.toMatchObject({ code: 'quota' })
-    expect(quota).toHaveBeenCalledTimes(1)
-
-    const down = vi.fn().mockImplementation(async () => new Response('{}', { status: 503 }))
-    vi.stubGlobal('fetch', down)
-    const pending = generate('k', {})
-    const settled = expect(pending).rejects.toMatchObject({ code: 'unavailable' })
-    await vi.runAllTimersAsync()
-    await settled
-    expect(down).toHaveBeenCalledTimes(2)
-    vi.useRealTimers()
   })
 
-  it('turns a network failure into a typed error', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    await expect(generate('k', {})).rejects.toMatchObject({ code: 'unavailable' })
+  it('does not try another model for a bad key, bad input, or no connection', async () => {
+    for (const failure of [status(403), status(400)]) {
+      const fetchSpy = vi.fn().mockResolvedValue(failure)
+      vi.stubGlobal('fetch', fetchSpy)
+      await expect(generate('k', {})).rejects.toBeInstanceOf(ApiError)
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+    }
+
+    const offline = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', offline)
+    await expect(generate('k', {})).rejects.toMatchObject({ code: 'unavailable', status: 0 })
+    expect(offline).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends the fallback no thinking level, which is specific to the first model', async () => {
+    const fetchSpy = vi.fn().mockResolvedValueOnce(status(503)).mockResolvedValueOnce(ok())
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await generate('k', buildPlanRequest(base))
+
+    const first = JSON.parse(fetchSpy.mock.calls[0][1].body as string)
+    const second = JSON.parse(fetchSpy.mock.calls[1][1].body as string)
+    expect(first.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'low' })
+    expect(second.generationConfig).toEqual({ temperature: 0 })
+    expect(second.tools).toEqual(first.tools)
+  })
+})
+
+describe('forFallback', () => {
+  it('leaves a request without a thinking level untouched', () => {
+    const request = { generationConfig: { temperature: 0.3 } }
+    expect(forFallback(request)).toBe(request)
   })
 })

@@ -8,7 +8,6 @@ were kept, so nothing that plans or writes a review had to change with it.
 
 import { todayKey } from '../hooks/useToday'
 import {
-  MODEL,
   buildInsightRequest,
   buildPlanRequest,
   generate,
@@ -42,8 +41,8 @@ export interface MonthlyInsight {
 }
 
 export async function fetchInsight(figures: InsightFigures): Promise<MonthlyInsight> {
-  const response = await generate(readGeminiKey(), buildInsightRequest(figures))
-  return { ...readInsightResponse(response), model: MODEL }
+  const { response, model } = await generate(readGeminiKey(), buildInsightRequest(figures))
+  return { ...readInsightResponse(response), model }
 }
 
 // ---------------------------------------------------------------------------
@@ -109,6 +108,6 @@ export async function planActions(input: {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   })
 
-  const response = await generate(readGeminiKey(), request)
-  return { ...readPlanResponse(response), model: MODEL }
+  const { response, model } = await generate(readGeminiKey(), request)
+  return { ...readPlanResponse(response), model }
 }

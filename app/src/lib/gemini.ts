@@ -25,16 +25,30 @@ another dependency in a bundle that is measured.
 
 export const MODEL = 'gemini-3.6-flash'
 
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
+/*
+Where a call goes when MODEL is overloaded, stalled, or out of the user's free
+allowance - free-tier limits are per model, so a second model is a second
+allowance as well as a second pool of capacity. Flash-Lite was chosen by
+measurement against the planner's own prompt: it produced the same actions as
+MODEL on the same instructions, in 4-10 seconds rather than 2-3.
+*/
+export const FALLBACK_MODEL = 'gemini-3.5-flash-lite'
+
+const endpoint = (model: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
 
 /*
-Model calls take seconds, not milliseconds - a narrative is around 13 - so the
-ceiling has to be generous. But fetch() has no timeout of its own: a dropped
-connection or a stalled request leaves the promise pending for ever, and any
-caller awaiting it is stuck with no error and no way back. That is exactly how
-the Dashboard once read "Writing…" indefinitely.
+fetch() has no timeout of its own: a stalled request leaves the promise pending
+for ever, with no error and no way back. On the free tier a request does
+sometimes stall rather than fail when the model is busy, so each attempt gets a
+ceiling, and a stalled first attempt moves on to the fallback instead of being
+waited out. A plan normally answers in about 3 seconds and a review in under 10,
+so 20 is generous for one attempt while two attempts stay under a minute.
 */
-const REQUEST_TIMEOUT_MS = 45_000
+const ATTEMPT_TIMEOUT_MS = 20_000
+
+/** Status given to an attempt that hit ATTEMPT_TIMEOUT_MS, as HTTP would. */
+const TIMED_OUT = 408
 
 // Every one of these lands in the prompt, and tokens count against the user's
 // allowance. The client sends far less; the caps are for the cases it does not.
@@ -511,7 +525,12 @@ export function buildPlanRequest(input: PlanInput): object {
     systemInstruction: { parts: [{ text: buildPlanSystem(input) }] },
     contents: [{ role: 'user', parts }],
     tools: TOOLS,
-    generationConfig: { temperature: 0 },
+    /*
+    Low thinking halves the wait - measured at about 2.5s against 5-8s - and
+    costs the planner nothing it needs: the work is reading one sentence into
+    function calls, and the actions came back identical either way.
+    */
+    generationConfig: { temperature: 0, thinkingConfig: { thinkingLevel: 'low' } },
   }
 }
 
@@ -671,24 +690,19 @@ export function describeFailure(status: number, body: unknown): ApiError {
 }
 
 /*
-A 500 or 503 from Gemini is usually a momentarily overloaded model, and the
-free tier sees it more than a paid one does. One quiet retry turns most of
-those into a normal answer; more than one would make a real outage feel hung.
+Worth a second model: busy (500, 503), stalled (408), or out of allowance (429,
+which is per model). Not worth it: a rejected key or unreadable input fails the
+same way everywhere, and an offline device reaches no model at all.
 */
-const RETRY_STATUSES = new Set([500, 503])
-const RETRY_DELAY_MS = 1_500
+const FALLBACK_STATUSES = new Set([TIMED_OUT, 429, 500, 503])
 
-export async function generate(key: string, request: object): Promise<unknown> {
-  try {
-    return await generateOnce(key, request)
-  } catch (err) {
-    if (!(err instanceof ApiError) || !RETRY_STATUSES.has(err.status)) throw err
-    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
-    return generateOnce(key, request)
-  }
+export interface Generated {
+  response: unknown
+  /** Which model actually answered. */
+  model: string
 }
 
-async function generateOnce(key: string, request: object): Promise<unknown> {
+export async function generate(key: string, request: object): Promise<Generated> {
   if (!key) {
     throw new ApiError(
       'Voice, receipts and the monthly review need your free Gemini key. Add it in Settings.',
@@ -697,12 +711,29 @@ async function generateOnce(key: string, request: object): Promise<unknown> {
     )
   }
 
+  try {
+    return { response: await attempt(MODEL, key, request), model: MODEL }
+  } catch (err) {
+    if (!(err instanceof ApiError) || !FALLBACK_STATUSES.has(err.status)) throw err
+    return { response: await attempt(FALLBACK_MODEL, key, forFallback(request)), model: FALLBACK_MODEL }
+  }
+}
+
+/** Thinking levels are model-specific; the fallback runs on its own defaults. */
+export function forFallback(request: object): object {
+  const config = (request as { generationConfig?: Record<string, unknown> }).generationConfig
+  if (!config || !('thinkingConfig' in config)) return request
+  const { thinkingConfig: _dropped, ...rest } = config
+  return { ...request, generationConfig: rest }
+}
+
+async function attempt(model: string, key: string, request: object): Promise<unknown> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS)
 
   let response: Response
   try {
-    response = await fetch(ENDPOINT, {
+    response = await fetch(endpoint(model), {
       method: 'POST',
       // A header, not ?key= in the URL, so the key stays out of logs and history.
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
@@ -710,14 +741,10 @@ async function generateOnce(key: string, request: object): Promise<unknown> {
       signal: controller.signal,
     })
   } catch {
-    // An abort and a genuine network failure both land here.
-    throw new ApiError(
-      controller.signal.aborted
-        ? 'That took too long. Check your connection and try again.'
-        : 'Could not reach Gemini. Check your connection.',
-      0,
-      'unavailable',
-    )
+    // An abort and a genuine network failure both land here, and mean different things.
+    throw controller.signal.aborted
+      ? new ApiError('Gemini is taking too long right now. Try again in a moment.', TIMED_OUT, 'unavailable')
+      : new ApiError('Could not reach Gemini. Check your connection.', 0, 'unavailable')
   } finally {
     clearTimeout(timer)
   }
