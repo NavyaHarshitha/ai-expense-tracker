@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { useApp } from '../App'
+import { ImportPanel } from '../components/ImportPanel'
 import { useGeminiKey } from '../hooks/useGeminiKey'
 import { ApiError, generate } from '../lib/gemini'
 import { clearGeminiKey, saveGeminiKey } from '../lib/geminiKey'
@@ -24,6 +26,7 @@ be fixed. Only a definite rejection blocks saving: if the user is merely over
 their limit, or Gemini is down, the key itself may be fine.
 */
 export function Settings() {
+  const { uid, tracks, categories, transactions } = useApp()
   const saved = useGeminiKey()
   const [draft, setDraft] = useState('')
   const [checking, setChecking] = useState(false)
@@ -135,6 +138,8 @@ export function Settings() {
           </p>
         )}
       </section>
+
+      <ImportPanel uid={uid} tracks={tracks} categories={categories} transactions={transactions} />
 
       <section className={cardPadded}>
         <h2 className={sectionTitle}>Good to know</h2>

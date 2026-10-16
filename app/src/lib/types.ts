@@ -19,7 +19,7 @@ export type Movement = 'expense' | 'income' | 'transfer' | 'refund'
 
 export type PaymentMethod = 'upi' | 'cash' | 'card' | 'bank_transfer'
 
-export type Source = 'manual' | 'chat' | 'voice' | 'receipt' | 'email' | 'seed'
+export type Source = 'manual' | 'chat' | 'voice' | 'receipt' | 'email' | 'seed' | 'import'
 
 export type ProjectPhase = 'accumulating' | 'active' | 'closed'
 

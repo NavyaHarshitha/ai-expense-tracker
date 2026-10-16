@@ -30,7 +30,7 @@ type Raw = Record<string, unknown>
 
 const MOVEMENTS: Movement[] = ['expense', 'income', 'transfer', 'refund']
 const METHODS: PaymentMethod[] = ['upi', 'cash', 'card', 'bank_transfer']
-const SOURCES: Source[] = ['manual', 'chat', 'voice', 'receipt', 'email', 'seed']
+const SOURCES: Source[] = ['manual', 'chat', 'voice', 'receipt', 'email', 'seed', 'import']
 const TRACK_TYPES: TrackType[] = ['spending', 'commitment', 'goal', 'project']
 const ACCOUNT_KINDS: AccountKind[] = ['bank', 'cash', 'wallet', 'credit_card']
 
